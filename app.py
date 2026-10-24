@@ -28,6 +28,8 @@ HOST, PORT = "127.0.0.1", 8777
 MEDIA_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".mp4", ".mkv", ".webm", ".mov", ".avi"}
 
 engine = None  # criado em main()
+STATE = {"admin": autostart.is_admin(), "admin_task": False, "admin_pending": False, "admin_error": ""}
+RESTART_ELEVATED = QUIT_APP = None  # definidos em main()
 
 
 def media_list():
@@ -68,7 +70,7 @@ class Handler(BaseHTTPRequestHandler):
         values = engine.sensors.snapshot()
         values.update(engine.weather.values)
         return {"status": engine.status, "current": engine.current, "pinned": engine.pinned, "values": values,
-                "video_errors": engine.video_errors}
+                "video_errors": engine.video_errors, **STATE}
 
     def _device_info(self):
         def query(lcd):
@@ -90,6 +92,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/state":
             return self._send({"config": engine.cfg, "catalog": CATALOG, "fonts": renderer.list_fonts(),
                                "media": media_list(), "ffmpeg": bool(engine.media.ffmpeg), **self._status()})
+        if path == "/api/debug/fps":
+            pm = engine.sensors.fps.presentmon
+            return self._send({"running": pm.running, "error": pm.error, **pm.debug})
         if path == "/api/status":
             return self._send(self._status())
         if path == "/api/device":
@@ -140,7 +145,7 @@ class Handler(BaseHTTPRequestHandler):
                 cfg = json.loads(self._body())
                 engine.update_config(cfg)
                 want = bool(cfg.get("settings", {}).get("autostart"))
-                if want != autostart.is_enabled():
+                if not STATE["admin_task"] and want != autostart.is_enabled():
                     autostart.set_enabled(want)
                 return self._send({"ok": True})
             if url.path == "/api/upload":
@@ -162,6 +167,16 @@ class Handler(BaseHTTPRequestHandler):
                 engine.device_call(lambda lcd: lcd.delete_video(name), timeout=30)
                 engine._video = None  # se era o vídeo tocando, a tela de vídeo envia de novo na próxima vez
                 return self._send(self._device_info())
+            if url.path == "/api/quit":  # usado para atualizar o programa (o servidor só aceita conexões locais)
+                threading.Timer(0.5, QUIT_APP).start()
+                return self._send({"ok": True})
+            if url.path == "/api/admin_mode":
+                if STATE["admin_pending"]:
+                    return self._send({"error": "já há um pedido de permissão aberto"}, code=409)
+                on = qs.get("on", ["1"])[0] == "1"
+                STATE.update(admin_pending=True, admin_error="")
+                threading.Thread(target=admin_mode_worker, args=(on,), daemon=True).start()
+                return self._send({"ok": True, "pending": True})
             if url.path == "/api/skin/use":
                 name = qs.get("name", [""])[0]
                 cfg = json.loads(json.dumps(engine.cfg))
@@ -201,6 +216,25 @@ class Handler(BaseHTTPRequestHandler):
         self._send({"error": "não encontrado"}, code=404)
 
 
+def admin_mode_worker(on):
+    """Pede a permissão do Windows (UAC) sem travar o editor, que acompanha pelo /api/status."""
+    try:
+        code = autostart.run_elevated("--install-admin-task" if on else "--remove-admin-task")
+        if code is None:
+            STATE["admin_error"] = "O Windows não concedeu a permissão de administrador."
+        elif code != 0:
+            STATE["admin_error"] = f"Não foi possível {'criar' if on else 'remover'} a tarefa (código {code})."
+        else:
+            STATE["admin_task"] = on
+            if on:
+                RESTART_ELEVATED()
+                return
+            if engine.cfg["settings"].get("autostart"):
+                autostart.set_enabled(True)
+    finally:
+        STATE["admin_pending"] = False
+
+
 AFTERBURNER_MSG = (
     "Para mostrar a temperatura da CPU, os dados completos da GPU e o FPS dos jogos, o TURZX Studio usa o "
     "MSI Afterburner e o RivaTuner Statistics Server, que não foram encontrados abertos.\n\n"
@@ -231,8 +265,12 @@ def already_running(url):
 
 
 def main():
-    global engine
+    global engine, RESTART_ELEVATED, QUIT_APP
     args = set(sys.argv[1:])
+    if "--install-admin-task" in args:  # chamado já elevado pelo próprio app
+        sys.exit(autostart.install_task())
+    if "--remove-admin-task" in args:
+        sys.exit(autostart.remove_task())
     ensure_data_dir()
     if getattr(sys, "frozen", False):  # sem console: mensagens vão para o log
         sys.stdout = sys.stderr = open(LOG_PATH, "a", encoding="utf8", buffering=1)
@@ -241,8 +279,16 @@ def main():
         if "--background" not in args:
             webbrowser.open(url)
         return
+    STATE["admin_task"] = autostart.task_installed()
+    if STATE["admin_task"] and not STATE["admin"]:
+        # modo administrador ativo, mas aberto pelo atalho comum: reabre pela tarefa (elevado, sem UAC)
+        if autostart.run_task() == 0:
+            if "--background" not in args:
+                threading.Timer(6.0, webbrowser.open, [url]).start()
+                time.sleep(7)
+            return
     engine = Engine()
-    engine.cfg["settings"]["autostart"] = autostart.is_enabled()
+    engine.cfg["settings"]["autostart"] = STATE["admin_task"] or autostart.is_enabled()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     engine.start()
@@ -253,8 +299,26 @@ def main():
 
     def quit_app():
         engine.stop()
+        engine.sensors.fps.presentmon.stop()
         server.shutdown()
         server.server_close()
+
+    def restart_elevated():
+        """Fecha esta instância (porta serial e servidor) e abre a versão elevada pela tarefa agendada."""
+        quit_app()
+        engine.thread.join(10)
+        autostart.run_task()
+        import tray
+        tray.stop()
+
+    RESTART_ELEVATED = restart_elevated
+
+    def quit_all():
+        quit_app()
+        import tray
+        tray.stop()
+
+    QUIT_APP = quit_all
 
     try:
         if "--no-tray" in args:

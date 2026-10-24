@@ -7,7 +7,9 @@
 - Galeria de skins com prévia da sua própria tela e botão "Usar esta skin".
 - Telas prontas ("Painel completo" e "Relógio e tempo") na aba Telas.
 - **MSI Afterburner como fonte de sensores**: temperatura, potência e clock da CPU e todos os
-  dados da GPU (NVIDIA, AMD ou Intel), sem precisar de administrador. FPS pelo RivaTuner.
+  dados da GPU (NVIDIA, AMD ou Intel).
+- **FPS em todos os jogos, inclusive o CS2**, com o PresentMon (Intel, MIT) em modo administrador,
+  ativado uma vez pelo Agendador de Tarefas, como no app original. O RivaTuner fica de reserva.
 - Aviso no primeiro uso, faixa no editor e painel "Fontes de dados" quando o Afterburner ou o
   RivaTuner não são encontrados.
 - Correção: respostas JSON declaram UTF-8 (acentos corretos em qualquer cliente).

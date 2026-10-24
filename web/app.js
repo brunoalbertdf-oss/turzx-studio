@@ -613,20 +613,45 @@ $("#abDismiss").addEventListener("click", () => {
   try { localStorage.setItem("abBanner", "off"); } catch {}
 });
 
-function renderSources(v) {
-  const ab = !!v.afterburner, rt = !!v.rtss;
+async function setAdminMode(on) {
+  const msg = on
+    ? "Para medir o FPS de todos os jogos (inclusive o CS2), o TURZX Studio precisa rodar como administrador, " +
+      "como o app original da TURZX.\n\nO Windows vai pedir permissão UMA vez. Depois, o programa abre como " +
+      "administrador ao ligar o PC (pelo Agendador de Tarefas), sem perguntar de novo, e reinicia agora.\n\nContinuar?"
+    : "Desativar o modo administrador? O Windows vai pedir permissão para remover a tarefa agendada.";
+  if (!confirm(msg)) return;
+  const r = await fetch(`/api/admin_mode?on=${on ? 1 : 0}`, { method: "POST" }).then((x) => x.json()).catch(() => ({}));
+  if (r.error) alert(r.error);
+  pollStatus();
+}
+
+function renderSources(v, st = {}) {
+  const ab = !!v.afterburner, rt = !!v.rtss, pm = v.presentmon === "PresentMon";
   $("#abBanner").hidden = ab || bannerDismissed;
   const line = (ok, name, okText, badText) =>
     el("p", {}, el("span", { class: ok ? "ok" : "bad" }, ok ? "✓ " : "✗ "), el("b", {}, name), " — ", ok ? okText : badText);
   const box = $("#sources"); box.innerHTML = "";
+  let pmLine;
+  if (pm) pmLine = line(true, "PresentMon", "ativo: FPS de todos os jogos, inclusive o CS2.", "");
+  else if (st.admin_pending) pmLine = el("p", {}, "⏳ ", el("b", {}, "PresentMon"),
+    " — aguardando a permissão do Windows. Se a janela não aparecer, procure o ícone piscando na barra de tarefas.");
+  else pmLine = el("p", {}, el("span", { class: "bad" }, "✗ "), el("b", {}, "PresentMon"),
+    st.admin_task ? " — modo administrador ativo; reinicie o TURZX Studio. " :
+      " — inativo: precisa do modo administrador para medir jogos como o CS2. ",
+    st.admin_task ? null : el("button", { onclick: () => setAdminMode(true) }, "Ativar FPS em todos os jogos"),
+    st.admin_error ? el("span", { class: "bad" }, " " + st.admin_error) : null);
   box.append(
+    pmLine,
     line(ab, "MSI Afterburner", "conectado: temperatura da CPU e dados completos da GPU.",
       "não encontrado. Sem ele não há temperatura da CPU (e GPUs AMD/Intel ficam sem dados)."),
-    line(rt, "RivaTuner Statistics Server", "ativo: FPS dos jogos.", "não encontrado: o FPS não aparece."),
+    line(rt, "RivaTuner Statistics Server", "ativo: FPS de reserva (jogos que aceitam o RivaTuner).",
+      "não encontrado (reserva do FPS)."),
+    st.admin_task ? el("p", {}, "Modo administrador ativo. ",
+      el("button", { onclick: () => setAdminMode(false) }, "Desativar")) : null,
     el("p", {}, `FPS agora: ${v.fps} ${v.fps_app ? "(" + v.fps_app + ")" : ""} ${v.fps_source ? "· via " + v.fps_source : ""}`),
     el("p", {}, "Dicas: deixe o Afterburner e o RivaTuner iniciando com o Windows; o RivaTuner precisa estar aberto ",
       "antes do jogo. No Afterburner, em Configurações → Monitoramento, deixe marcados \"CPU temperature\", ",
-      "\"CPU power\" e \"Framerate\". O CS2 bloqueia o RivaTuner (Trusted Mode da Valve), então o FPS não aparece nele."),
+      "\"CPU power\" e \"Framerate\". Jogos como o CS2 bloqueiam o RivaTuner: neles o FPS vem do PresentMon."),
     el("p", {}, el("a", { href: "https://www.msi.com/Landing/afterburner/graphics-cards", target: "_blank" },
       "Baixar o MSI Afterburner (site oficial da MSI)")));
 }
@@ -645,7 +670,7 @@ async function pollStatus() {
     if (liveIndex !== r.current) { liveIndex = r.current; renderScreens(); }
     const pinned = r.pinned != null;
     $("#pinScreen").dataset.pinned = pinned ? "1" : "0";
-    renderSources(r.values);
+    renderSources(r.values, r);
     $("#pinScreen").textContent = pinned ? `Retomar carrossel (fixa: ${cfg.screens[r.pinned]?.name || r.pinned})` : "Mostrar agora";
   } catch {
     $("#conn").className = "pill bad"; $("#conn").textContent = "App fechado";

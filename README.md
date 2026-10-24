@@ -52,7 +52,7 @@ roda como administrador, mede tudo isso e compartilha os dados, e o TURZX Studio
 o app mostra:
 - **temperatura, potência e clock da CPU**;
 - **todos os dados da GPU**: temperatura, uso, potência, clock, ventoinha e VRAM, de NVIDIA, AMD ou Intel;
-- o **FPS do jogo**, pelo RivaTuner.
+- o **FPS do jogo**, pelo RivaTuner (veja também o PresentMon abaixo).
 
 No Afterburner, em *Configurações → Monitoramento*, deixe marcados *CPU temperature*, *CPU power* e
 *Framerate*. Se o Afterburner não for encontrado, o TURZX Studio avisa no primeiro uso e mostra uma faixa
@@ -67,12 +67,16 @@ dados de GPUs NVIDIA (pelo driver).
 
 ### FPS dos jogos
 
-O FPS vem do **RivaTuner Statistics Server**: é medido o jogo que está em primeiro plano, e medições
-paradas são ocultadas. O RivaTuner precisa estar aberto **antes** de abrir o jogo.
+O FPS é do jogo em primeiro plano e vem, nesta ordem, de:
 
-> **CS2 e outros jogos com proteção contra injeção:** o "Trusted Mode" do CS2 bloqueia o RivaTuner,
-> então o FPS não aparece nele. Isso acontece também com o overlay do Afterburner. A opção de inicialização
-> `-allow_third_party_software` libera, mas reduz o seu *trust factor* no matchmaking, então não recomendamos.
+1. **PresentMon** (incluído, da Intel, licença MIT). Mede pelos eventos de quadros do próprio Windows,
+   sem entrar no jogo, então funciona em **todos os jogos, inclusive o CS2**, e com qualquer placa de vídeo.
+   O Windows só libera essa medição para programas executados como administrador, como acontece com o app
+   original da TURZX. Para ativar, vá em **Ajustes → Fontes de dados → "Ativar FPS em todos os jogos"**.
+   O Windows pede permissão **uma vez** e cria uma tarefa no Agendador de Tarefas que abre o TURZX Studio
+   como administrador ao fazer login, sem perguntar de novo. O botão "Desativar" remove a tarefa.
+2. **RivaTuner Statistics Server**, como reserva. Jogos com proteção contra injeção, como o CS2, não
+   deixam o RivaTuner medir.
 
 ### Logos oficiais dos fabricantes
 
@@ -121,10 +125,11 @@ Para rodar sem compilar: `pip install -r requirements.txt` e `python app.py`.
 | `renderer.py`, `decor.py` | widgets e desenhos das skins |
 | `themes.py`, `defaults.py` | skins e telas prontas, configuração inicial |
 | `sensors.py`, `weather.py` | dados do PC e tempo |
-| `afterburner.py`, `fps.py` | sensores do MSI Afterburner e FPS do RivaTuner |
+| `afterburner.py` | sensores do MSI Afterburner |
+| `fps.py`, `tools/PresentMon.exe` | FPS (PresentMon, com o RivaTuner de reserva) |
 | `media.py` | imagens, GIFs, vídeos e conversão para a tela |
 | `app.py`, `web/` | servidor local e editor |
-| `tray.py`, `autostart.py` | bandeja e início com o Windows |
+| `tray.py`, `autostart.py` | bandeja, início com o Windows e modo administrador |
 
 ## Avisos
 
@@ -138,4 +143,5 @@ Para rodar sem compilar: `pip install -r requirements.txt` e `python app.py`.
 
 ## Licença
 
-[MIT](LICENSE)
+[MIT](LICENSE). Inclui o [PresentMon](https://github.com/GameTechDev/PresentMon) da Intel, também sob licença
+MIT ([third_party/PresentMon-LICENSE.txt](third_party/PresentMon-LICENSE.txt)).
