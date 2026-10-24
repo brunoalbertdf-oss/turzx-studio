@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TURZX Studio</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand">TURZX <b>Studio</b></div>
+  <div id="conn" class="pill">…</div>
+  <label class="hdr">Brilho <input id="brightness" type="range" min="0" max="100"><span id="brightnessVal"></span></label>
+  <label class="hdr">Orientação
+    <select id="orientation">
+      <option value="landscape">Paisagem</option>
+      <option value="landscape_flipped">Paisagem (invertida)</option>
+      <option value="portrait">Retrato</option>
+      <option value="portrait_flipped">Retrato (invertido)</option>
+    </select></label>
+  <label class="hdr">Skin <select id="globalSkin"></select></label>
+  <label class="hdr">Cidade <input id="city" size="14"></label>
+  <label class="hdr"><input id="carousel" type="checkbox"> Carrossel</label>
+  <span class="grow"></span>
+  <button id="prevScreen" title="Tela anterior na tela física">◀</button>
+  <button id="nextScreen" title="Próxima tela na tela física">▶</button>
+  <span id="saveState" class="muted"></span>
+</header>
+
+<main>
+  <aside id="left">
+    <div class="tabs">
+      <button data-tab="screens" class="active">Telas</button>
+      <button data-tab="themes">Temas</button>
+      <button data-tab="skins">Skins</button>
+      <button data-tab="media">Mídia</button>
+      <button data-tab="settings">Ajustes</button>
+    </div>
+
+    <section id="tab-screens" class="tab active">
+      <ul id="screenList" class="list"></ul>
+      <div class="row">
+        <button id="addScreen">+ Nova</button>
+        <button id="dupScreen">Duplicar</button>
+        <button id="delScreen" class="danger">Excluir</button>
+      </div>
+      <div class="row">
+        <button id="upScreen">↑</button>
+        <button id="downScreen">↓</button>
+        <button id="pinScreen">Mostrar agora</button>
+      </div>
+      <h4>Adicionar widget</h4>
+      <div id="addWidget" class="grid2"></div>
+      <h4>Camadas</h4>
+      <ul id="layerList" class="list small"></ul>
+    </section>
+
+    <section id="tab-themes" class="tab">
+      <p class="muted">Temas de fã feitos só com formas e cores originais. Cada um traz um painel completo
+        e uma tela de relógio com espaço para o seu GIF.</p>
+      <div id="themeList"></div>
+    </section>
+
+    <section id="tab-skins" class="tab">
+      <select id="skinSelect" class="full"></select>
+      <div id="skinColors"></div>
+      <div class="row">
+        <button id="newSkin">+ Nova skin</button>
+        <button id="renameSkin">Renomear</button>
+        <button id="delSkin" class="danger">Excluir</button>
+      </div>
+      <p class="muted">Use <code>$nome</code> (ex.: <code>$accent</code>) nas cores dos widgets para seguir a skin.
+        Trocar a skin recolore todas as telas que usam essas cores.</p>
+    </section>
+
+    <section id="tab-media" class="tab">
+      <label class="upload">Enviar imagens, GIFs ou vídeos
+        <input id="upload" type="file" multiple accept="image/*,video/*"></label>
+      <p id="ffmpegWarn" class="warn" hidden>ffmpeg não encontrado: vídeos não vão tocar.</p>
+      <ul id="mediaList" class="list"></ul>
+      <h4>Memória da tela <button id="refreshDevice" title="Atualizar">↻</button></h4>
+      <div id="deviceInfo" class="muted">—</div>
+      <p class="muted">Dica: vídeos e GIFs em áreas menores ficam bem mais fluidos. A tela recebe cerca de
+        700 KB/s, então um vídeo em tela cheia fica com 1 ou 2 quadros por segundo.</p>
+    </section>
+
+    <section id="tab-settings" class="tab">
+      <label><input id="autostart" type="checkbox"> Iniciar com o Windows</label>
+      <label>Transição entre telas
+        <select id="transition"><option value="fade">Suave (apaga e acende)</option>
+          <option value="none">Instantânea</option></select></label>
+      <label>Quadros por segundo (máx.) <input id="maxFps" type="number" min="1" max="30"></label>
+      <label>Porta serial (vazio = automático) <input id="port" placeholder="ex.: COM3"></label>
+      <label>Caminho do ffmpeg (vazio = automático) <input id="ffmpeg"></label>
+      <label>LibreHardwareMonitor (temp. da CPU) <input id="lhm"></label>
+      <p class="muted">Para a temperatura da CPU: abra o LibreHardwareMonitor como administrador e ative
+        <i>Options → Remote Web Server → Run</i>.</p>
+      <h4>Valores disponíveis</h4>
+      <table id="catalog" class="catalog"></table>
+    </section>
+  </aside>
+
+  <section id="center">
+    <div class="toolbar">
+      <span id="screenTitle"></span>
+      <span class="grow"></span>
+      <label><input id="showGrid" type="checkbox"> Grade</label>
+      <label><input id="liveView" type="checkbox"> Ver o que está na tela agora</label>
+    </div>
+    <div id="stageWrap">
+      <div id="stageHolder">
+        <div id="stage">
+          <img id="preview" alt="">
+          <div id="overlay"></div>
+        </div>
+      </div>
+    </div>
+    <p class="muted hint">Arraste para mover, use o canto para redimensionar. Setas movem 1 px (Shift = 10 px),
+      Delete exclui, Ctrl+D duplica, Ctrl+Z desfaz, Ctrl+Y refaz.</p>
+  </section>
+
+  <aside id="right">
+    <h3 id="propTitle">Propriedades</h3>
+    <div id="props"></div>
+  </aside>
+</main>
+
+<datalist id="skinVars"></datalist>
+<script src="app.js"></script>
+</body>
+</html>
