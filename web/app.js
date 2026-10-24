@@ -696,7 +696,7 @@ async function pollStatus() {
     const c = $("#conn");
     c.className = "pill " + (r.status.connected ? "ok" : "bad");
     c.textContent = r.status.connected ? `Conectada · ${r.status.fps} qps` : r.status.message;
-    c.title = r.status.screen_id || "";
+    c.title = r.status.connected ? (r.status.screen_id || "") : r.status.message;
     if (liveIndex !== r.current) { liveIndex = r.current; renderScreens(); }
     const pinned = r.pinned != null;
     $("#pinScreen").dataset.pinned = pinned ? "1" : "0";

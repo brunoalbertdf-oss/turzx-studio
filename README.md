@@ -84,6 +84,17 @@ O programa desenha um selo com o nome e a cor de cada marca. Logos oficiais são
 e não são distribuídos aqui. Se quiser usá-los, salve os PNGs com fundo transparente como
 `amd.png`, `nvidia.png` ou `intel.png` em `%APPDATA%\TURZX Studio\logos`.
 
+## Problemas comuns
+
+**A tela continua mostrando o tema do app chinês.** Quando nenhum programa conversa com ela, a tela exibe o que
+tem gravado. Veja a mensagem no topo do editor (passe o mouse para ver tudo):
+- *"a porta da tela está em uso por outro programa"*: o app TURZX original (`UsbMonitorL.exe`) ainda está
+  rodando. Feche-o pela bandeja e tire-o da inicialização do Windows (Gerenciador de Tarefas → Inicializar).
+- *"Tela TURZX não encontrada… Portas vistas: …"*: a lista mostra a identificação USB de cada porta. Abra uma
+  issue com essa linha e o modelo da sua tela.
+
+O registro fica em `%APPDATA%\TURZX Studio\turzx-studio.log`.
+
 ## Telas compatíveis
 
 Testado na **TURZX 5"** (USB `VID_1D6B&PID_0106`, ID `chs_5inch.dev1_rom1.87`).

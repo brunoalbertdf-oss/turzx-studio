@@ -39,13 +39,45 @@ def _trace(msg, t):
 
 
 AWAKE_IDS = {(0x1D6B, 0x0121), (0x1D6B, 0x0106), (0x0525, 0xA4A7)}
+# Ao ligar, a tela pode aparecer "dormindo", com outra identificação USB, até alguém abrir a porta.
+SLEEPING_SERIALS = {"USB7INCH", "CT21INCH", "CT88INCH"}
+SLEEPING_IDS = {(0x1A86, 0xCA21)}
 
 
-def find_port():
+def _awake_port():
     for p in list_ports.comports():
         if (p.vid, p.pid) in AWAKE_IDS or p.serial_number == "20080411":
             return p.device
-    raise RuntimeError("Tela TURZX não encontrada. Ela está conectada e o TURZX fechado?")
+    return None
+
+
+def describe_ports():
+    """Portas COM vistas, com a identificação USB (para o diagnóstico no editor e no log)."""
+    out = []
+    for p in list_ports.comports():
+        ids = f"VID {p.vid:04X} PID {p.pid:04X}" if p.vid is not None else "sem USB"
+        out.append(f"{p.device} ({ids}{', série ' + p.serial_number if p.serial_number else ''})")
+    return ", ".join(out) or "nenhuma"
+
+
+def find_port():
+    port = _awake_port()
+    if port:
+        return port
+    sleeping = [p.device for p in list_ports.comports()
+                if p.serial_number in SLEEPING_SERIALS or (p.vid, p.pid) in SLEEPING_IDS]
+    for dev in sleeping:  # acorda: abrir a porta faz a tela reaparecer com a identificação normal
+        for _ in range(15):
+            try:
+                serial.Serial(dev, 115200, timeout=1, rtscts=True).close()
+            except serial.SerialException:
+                pass
+            time.sleep(1)
+            port = _awake_port()
+            if port:
+                time.sleep(1)
+                return port
+    raise RuntimeError("Tela TURZX não encontrada (feche o app TURZX original). Portas vistas: " + describe_ports())
 
 
 def _pad(data: bytes, fill: int = 0x00) -> bytes:

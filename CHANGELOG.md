@@ -1,5 +1,11 @@
 # Registro de mudanças
 
+## 1.1.1 (24/10/2026)
+- Acorda telas que aparecem "dormindo" no Windows (identificação `USB7INCH` / `1A86:CA21`), como o app original faz.
+- Diagnóstico de conexão: quando a tela não é encontrada, o editor mostra as portas vistas com a identificação
+  USB; quando a porta está ocupada, avisa que o app TURZX original ainda está rodando.
+- README: seção "Problemas comuns".
+
 ## 1.1.0 (24/10/2026)
 - **Skins completas**: além das cores, cada skin traz fontes e fundo decorado e muda o visual de
   todas as telas sem mexer no layout. Os 8 visuais temáticos (Saiyajin, Super Saiyajin Blue,

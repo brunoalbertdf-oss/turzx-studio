@@ -315,8 +315,14 @@ class Engine:
                     pass
                 time.sleep(12)
             except Exception as e:
-                self.status.update(connected=False, message=f"Desconectada: {e}")
-                print("tela:", e)
+                msg = str(e)
+                if "PermissionError" in msg or "Acesso negado" in msg or "Access is denied" in msg:
+                    msg = ("a porta da tela está em uso por outro programa. Feche o app TURZX original "
+                           "(inclusive o ícone da bandeja) e tire-o da inicialização do Windows.")
+                self.status.update(connected=False, message=f"Desconectada: {msg}")
+                if msg != getattr(self, "_last_error", None):  # registra cada erro uma vez
+                    print(time.ctime(), "tela:", msg)
+                    self._last_error = msg
                 try:
                     lcd.close()
                 except Exception:
