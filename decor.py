@@ -247,28 +247,65 @@ BRANDS = {  # cores das marcas para o selo desenhado
 }
 
 
-@lru_cache(maxsize=16)
-def _user_logo(vendor, mtime):
-    path = os.path.join(LOGO_DIR, f"{vendor.lower()}.png")
-    return Image.open(path).convert("RGBA")
+def _load_logo(path, mtime, lighten):
+    im = Image.open(path).convert("RGBA")
+    if im.getbbox():
+        im = im.crop(im.getbbox())  # tira a margem transparente
+    if lighten:  # texto preto ilegível em fundo escuro: vira branco, cores (ex.: verde da NVIDIA) ficam
+        px = im.load()
+        for yy in range(im.height):
+            for xx in range(im.width):
+                r, g, b, a = px[xx, yy]
+                if a and max(r, g, b) < 90:
+                    px[xx, yy] = (255 - r, 255 - g, 255 - b, a)
+    return im
 
 
-def user_logo(vendor):
-    """Logo oficial que o usuário colocou em %APPDATA%\\TURZX Studio\\logos\\<fabricante>.png."""
-    path = os.path.join(LOGO_DIR, f"{vendor.lower()}.png")
-    if vendor and os.path.isfile(path):
-        return _user_logo(vendor, os.path.getmtime(path))
-    return None
+_logo_cache = {}
 
 
-def draw_brand_badge(layer, d, box, vendor, font_fn, style="badge"):
+def logo_paths(vendor):
+    base = os.path.join(LOGO_DIR, (vendor or "").lower())
+    return base + ".png", base + "-white.png"  # para fundo claro / para fundo escuro
+
+
+def user_logo(vendor, dark_bg=True):
+    """Logo oficial que o usuário enviou (pasta logos): <fabricante>.png e <fabricante>-white.png."""
+    if not vendor:
+        return None
+    normal, white = logo_paths(vendor)
+    if dark_bg and os.path.isfile(white):
+        path, lighten = white, False
+    elif os.path.isfile(normal):
+        path, lighten = normal, dark_bg
+    elif os.path.isfile(white):
+        path, lighten = white, False
+    else:
+        return None
+    key = (path, os.path.getmtime(path), lighten)
+    if key not in _logo_cache:
+        _logo_cache[key] = _load_logo(path, key[1], lighten)
+    return _logo_cache[key]
+
+
+def is_dark(skin):
+    """Fundo escuro quando o texto da skin é claro."""
+    c = skin.get("text", "#ffffff").lstrip("#")
+    try:
+        r, g, b = (int(c[i:i + 2], 16) for i in (0, 2, 4))
+    except ValueError:
+        return True
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 128
+
+
+def draw_brand_badge(layer, d, box, vendor, font_fn, style="badge", dark_bg=True):
     x, y, w, h = box
-    logo = user_logo(vendor)
+    logo = user_logo(vendor, dark_bg)
     if logo is not None:
         im = logo.copy()
         im.thumbnail((w, h), Image.LANCZOS)
-        layer.alpha_composite(im, (x + (w - im.width) // 2, y + (h - im.height) // 2))
-        return
+        layer.alpha_composite(im, (x, y + (h - im.height) // 2))
+        return im.width, im.height
     b = BRANDS.get(vendor, {"bg": (60, 60, 70, 255), "fg": (255, 255, 255, 255), "accent": (150, 150, 160, 255),
                             "word": vendor or "?"})
     fnt = font_fn("arialbd.ttf" if vendor != "Intel" else "segoeuib.ttf", max(8, int(h * 0.62)))
@@ -281,3 +318,4 @@ def draw_brand_badge(layer, d, box, vendor, font_fn, style="badge"):
         fg = b["bg"] if vendor != "AMD" else b["accent"]
     l, t, r, bt = d.textbbox((0, 0), b["word"], font=fnt)
     d.text((x + (w - (r - l)) / 2 - l, y + (h - (bt - t)) / 2 - t - h * 0.04), b["word"], font=fnt, fill=fg)
+    return w, h

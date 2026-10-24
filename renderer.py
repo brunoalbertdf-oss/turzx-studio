@@ -300,16 +300,35 @@ def w_brand(layer, d, wd, box, ctx):
     x, y, w, h = box
     dev = wd.get("device", "cpu")
     vendor = ctx.values.get(f"{dev}_vendor", "")
+    dark = decor.is_dark(ctx.skin)
     if not wd.get("show_name", True):
-        decor.draw_brand_badge(layer, d, box, vendor, font, wd.get("style", "badge"))
+        decor.draw_brand_badge(layer, d, box, vendor, font, wd.get("style", "badge"), dark)
         return
-    lw = int(min(w * 0.42, h * 2.6))
-    decor.draw_brand_badge(layer, d, (x, y, lw, h), vendor, font, wd.get("style", "badge"))
-    name = ctx.values.get(f"{dev}_name" if not wd.get("full_name") else f"{dev}_name_full", "")
-    fnt = font(wd.get("font", "segoeuib.ttf"), int(wd.get("size", max(10, h * 0.55))))
-    _text_in_box(d, (x + lw + int(h * 0.3), y, w - lw - int(h * 0.3), h), str(name), fnt,
+    logo = decor.user_logo(vendor, dark)
+    if logo is not None:  # logos são horizontais: mais espaço, na proporção do arquivo
+        lw = int(min(w * 0.45, h * 0.8 * logo.width / max(1, logo.height)))
+        lw, lh = decor.draw_brand_badge(layer, d, (x, y + int(h * 0.1), lw, int(h * 0.8)), vendor, font, "badge", dark)
+    else:
+        lw = int(min(w * 0.42, h * 2.6))
+        lw, lh = decor.draw_brand_badge(layer, d, (x, y, lw, h), vendor, font, wd.get("style", "badge"), dark)
+        lh = int(lh * 0.62)
+    name = str(ctx.values.get(f"{dev}_name" if not wd.get("full_name") else f"{dev}_name_full", ""))
+    gap = int(h * 0.3)
+    avail = w - lw - gap
+    fname = wd.get("font", "segoeuib.ttf")
+    if wd.get("size"):
+        size = int(wd["size"])
+    else:  # automático: letras maiúsculas da mesma altura do logo, sem passar da largura disponível
+        ref = font(fname, 100)
+        l, t, r, b = d.textbbox((0, 0), "H", font=ref)
+        size = max(8, int(100 * lh / max(1, b - t)))
+        while size > 8:
+            l, t, r, b = d.textbbox((0, 0), name, font=font(fname, size))
+            if r - l <= avail:
+                break
+            size -= 1
+    _text_in_box(d, (x + lw + gap, y, avail, h), name, font(fname, size),
                  color(wd.get("color"), ctx.skin, "#ffffff"), "left")
-
 
 def w_drives(layer, d, wd, box, ctx):
     """Lista as unidades de disco com barra de uso."""

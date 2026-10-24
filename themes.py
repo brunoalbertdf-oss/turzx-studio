@@ -39,7 +39,7 @@ def dashboard(name="Painel completo"):
         T("{weather_city} · {weather_desc}", 380, 74, 400, 26, 16, "$muted", align="right"),
         # CPU
         P(16, 106, 376, 192),
-        {"type": "brand", "device": "cpu", "x": 30, "y": 116, "w": 350, "h": 30, "size": 18, "color": "$text"},
+        {"type": "brand", "device": "cpu", "x": 30, "y": 116, "w": 350, "h": 30, "color": "$text"},
         {"type": "gauge", "value": "cpu_percent", "x": 26, "y": 154, "w": 136, "h": 136, "color": "$accent",
          "bg": "#ffffff1a", "label": "CPU", "warn_at": 90, "font": NUM},
         T("{cpu_temp}°C", 172, 158, 206, 40, 32, font=NUM),
@@ -48,7 +48,7 @@ def dashboard(name="Painel completo"):
          "max": 100},
         # GPU
         P(408, 106, 376, 192),
-        {"type": "brand", "device": "gpu", "x": 422, "y": 116, "w": 350, "h": 30, "size": 18, "color": "$text"},
+        {"type": "brand", "device": "gpu", "x": 422, "y": 116, "w": 350, "h": 30, "color": "$text"},
         {"type": "gauge", "value": "gpu_percent", "x": 418, "y": 154, "w": 136, "h": 136, "color": "$accent2",
          "bg": "#ffffff1a", "label": "GPU", "warn_at": 90, "font": NUM},
         T("{gpu_temp:.0f}°C", 564, 158, 206, 40, 32, font=NUM),

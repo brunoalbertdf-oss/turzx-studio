@@ -15,6 +15,11 @@
 - **Correção do congelamento da tela**: a marca de fim das atualizações parciais passa a entrar na divisão
   em blocos de 249 bytes, como no app da TURZX. Antes, cerca de 1 em cada 249 atualizações chegava corrompida
   e a tela travava pedindo reenvio. Como rede de segurança, se a tela pedir reenvio, o app a reinicia e reconecta sozinho.
+- **Correção do travamento após redesenhar a tela inteira** (salvar no editor, trocar skin, enviar logo):
+  a tela reinicia a numeração das atualizações parciais após cada imagem inteira; o app agora acompanha.
+- **Logos oficiais pelo editor** (Ajustes → Logos dos fabricantes): versões para fundo escuro e claro,
+  escolhidas pela skin; sem a versão clara, o texto preto é clareado automaticamente. O nome do modelo
+  ao lado acompanha a altura do logo.
 - Correção: respostas JSON declaram UTF-8 (acentos corretos em qualquer cliente).
 
 ## 1.0.0 (24/10/2026)

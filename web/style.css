@@ -1,4 +1,5 @@
 :root {
+  --logo-dark: #1a1d28; --logo-light: #f2f4f8;
   --ok: #8dffb0;
   --bg: #12141c; --panel: #1a1d28; --panel2: #232736; --line: #2e3345; --text: #e6e8f0;
   --muted: #8b91a8; --accent: #4cc2ff; --danger: #ff5c6c; --sel: #ffcc33;
@@ -121,3 +122,11 @@ aside { background: var(--panel); padding: 12px; overflow: auto; }
 #sources p { margin: 4px 0; }
 #sources .ok { color: var(--ok); }
 #sources .bad { color: var(--danger); }
+
+#logos .vendor { margin: 6px 0 10px; }
+#logos .slots { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+#logos .slot { border: 1px solid var(--line); border-radius: 6px; padding: 4px; text-align: center; font-size: 11px; }
+#logos .slot .pv { height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 4px; margin-bottom: 4px; }
+#logos .slot .pv img { max-height: 26px; max-width: 100%; }
+#logos .slot label { cursor: pointer; color: var(--accent); }
+#logos .slot input { display: none; }

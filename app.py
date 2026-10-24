@@ -18,13 +18,15 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import autostart
+import decor
 import renderer
 import themes
 from engine import Engine, save_config
-from paths import DEVICE_CACHE, LOG_PATH, MEDIA_DIR, WEB_DIR, ensure_data_dir
+from paths import DEVICE_CACHE, LOGO_DIR, LOG_PATH, MEDIA_DIR, WEB_DIR, ensure_data_dir
 from sensors import CATALOG
 
 HOST, PORT = "127.0.0.1", 8777
+VENDORS = ("AMD", "NVIDIA", "Intel")
 MEDIA_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".mp4", ".mkv", ".webm", ".mov", ".avi"}
 
 engine = None  # criado em main()
@@ -102,6 +104,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(self._device_info())
             except Exception as e:
                 return self._send({"error": str(e)}, code=503)
+        if path == "/api/logos":
+            out = {}
+            for v in VENDORS:
+                normal, white = decor.logo_paths(v)
+                out[v] = {"normal": os.path.isfile(normal), "white": os.path.isfile(white)}
+            return self._send(out)
+        if path.startswith("/logos/"):
+            name = os.path.basename(urllib.parse.unquote(path[7:]))
+            p = os.path.join(LOGO_DIR, name)
+            if name.endswith(".png") and os.path.isfile(p):
+                with open(p, "rb") as f:
+                    return self._send(f.read(), "image/png")
         if path == "/api/skins":
             return self._send(themes.catalog())
         if path == "/api/layouts":
@@ -181,6 +195,26 @@ class Handler(BaseHTTPRequestHandler):
                 STATE.update(admin_pending=True, admin_error="")
                 threading.Thread(target=admin_mode_worker, args=(on,), daemon=True).start()
                 return self._send({"ok": True, "pending": True})
+            if url.path in ("/api/logo", "/api/logo/delete"):
+                vendor = qs.get("vendor", [""])[0]
+                if vendor not in VENDORS:
+                    return self._send({"error": "fabricante inválido"}, code=400)
+                normal, white = decor.logo_paths(vendor)
+                target = white if qs.get("variant", ["normal"])[0] == "white" else normal
+                if url.path == "/api/logo/delete":
+                    if os.path.isfile(target):
+                        os.remove(target)
+                else:
+                    from PIL import Image
+                    try:
+                        img = Image.open(io.BytesIO(self._body()))
+                        img.load()
+                    except Exception:
+                        return self._send({"error": "envie uma imagem (PNG com fundo transparente)"}, code=400)
+                    os.makedirs(LOGO_DIR, exist_ok=True)
+                    img.convert("RGBA").save(target)
+                engine._force_full = True  # redesenha com o logo novo
+                return self._send({"ok": True})
             if url.path == "/api/skin/use":
                 name = qs.get("name", [""])[0]
                 cfg = json.loads(json.dumps(engine.cfg))

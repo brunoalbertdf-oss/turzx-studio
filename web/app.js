@@ -582,7 +582,7 @@ $("#showGrid").addEventListener("change", (e) => $("#overlay").classList.toggle(
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => {
   document.querySelectorAll(".tabs button, .tab").forEach((x) => x.classList.remove("active"));
   b.classList.add("active"); $(`#tab-${b.dataset.tab}`).classList.add("active");
-  if (b.dataset.tab === "settings") renderCatalog();
+  if (b.dataset.tab === "settings") { renderCatalog(); loadLogos(); }
   if (b.dataset.tab === "media") loadDevice();
   if (b.dataset.tab === "skins") loadSkinGallery();
 }));
@@ -603,6 +603,36 @@ document.addEventListener("keydown", (e) => {
   else if (e.key.toLowerCase() === "d" && e.ctrlKey) { e.preventDefault(); dupWidget(); }
   else if (e.key === "Escape") { selW = null; renderOverlay(); renderLayers(); renderProps(); }
 });
+
+// ------------------------------------------------------------ logos dos fabricantes
+
+async function loadLogos() {
+  const st = await fetch("/api/logos").then((r) => r.json());
+  const box = $("#logos"); box.innerHTML = "";
+  for (const [vendor, has] of Object.entries(st)) {
+    const slot = (variant, label, bg) => {
+      const file = `${vendor.toLowerCase()}${variant === "white" ? "-white" : ""}.png`;
+      const input = el("input", { type: "file", accept: "image/png,image/*" });
+      input.addEventListener("change", async () => {
+        const f = input.files[0]; if (!f) return;
+        const r = await fetch(`/api/logo?vendor=${vendor}&variant=${variant}`, { method: "POST", body: f }).then((x) => x.json());
+        if (r.error) alert(r.error);
+        loadLogos(); refreshPreview();
+      });
+      const exists = has[variant];
+      return el("div", { class: "slot" },
+        el("div", { class: "pv", style: `background:var(${bg})` },
+          exists ? el("img", { src: `/logos/${file}?t=${Date.now()}`, alt: file }) : el("span", { class: "muted" }, "—")),
+        el("div", {}, label),
+        el("label", {}, exists ? "trocar" : "enviar", input),
+        exists ? el("button", { class: "danger", title: "Remover", onclick: async () => {
+          await fetch(`/api/logo/delete?vendor=${vendor}&variant=${variant}`, { method: "POST" }); loadLogos(); refreshPreview();
+        } }, "✕") : null);
+    };
+    box.append(el("div", { class: "vendor" }, el("b", {}, vendor),
+      el("div", { class: "slots" }, slot("white", "Fundo escuro (branca)", "--logo-dark"), slot("normal", "Fundo claro (preta/colorida)", "--logo-light"))));
+  }
+}
 
 // ------------------------------------------------------------ fontes de dados (Afterburner / RivaTuner)
 

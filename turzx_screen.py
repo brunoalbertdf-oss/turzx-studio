@@ -204,6 +204,7 @@ class TurzxScreen:
         self._send(DISPLAY_BITMAP_5INCH + int(480 * 480 / 64).to_bytes(2, "big"))
         self._send(_chunk_join(bgra), read=1024)
         self._send(QUERY_STATUS, read=1024)
+        self.update_count = 0  # a tela reinicia a sequência das atualizações parciais após uma imagem inteira
 
     def show_region(self, image: Image.Image, x: int, y: int):
         """Atualiza só um retângulo (coordenadas em paisagem 800x480). Bem mais rápido."""
@@ -227,6 +228,12 @@ class TurzxScreen:
         self._send(_chunk_join(bytes(body) + b"\xEF\x69"))
         status = self._send(QUERY_STATUS, read=1024)
         self.update_count += 1
+        for _ in range(3):  # resposta atrasada (ex.: logo após uma imagem inteira) não é perda de sincronia
+            if status and b"needReSend:1" not in status:
+                return
+            time.sleep(0.3)
+            self.ser.reset_input_buffer()
+            status = self._send(QUERY_STATUS, read=1024)
         if b"needReSend:1" in status or not status:
             raise ScreenDesync("a tela pediu reenvio")
 
