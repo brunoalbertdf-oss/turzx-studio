@@ -130,3 +130,7 @@ aside { background: var(--panel); padding: 12px; overflow: auto; }
 #logos .slot .pv img { max-height: 26px; max-width: 100%; }
 #logos .slot label { cursor: pointer; color: var(--accent); }
 #logos .slot input { display: none; }
+
+footer { text-align: center; padding: 4px 14px; font-size: 12px; color: var(--muted); background: var(--panel);
+  border-top: 1px solid var(--line); }
+footer b { color: var(--accent); font-weight: 600; }

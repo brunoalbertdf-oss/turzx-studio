@@ -716,6 +716,7 @@ async function init() {
   const st = await api("/api/state");
   ({ config: cfg, catalog, fonts, media, values } = st);
   lastSaved = JSON.stringify(cfg);
+  if (st.version) $("#appVersion").textContent = `TURZX Studio ${st.version}`;
   liveIndex = st.current;
   $("#ffmpegWarn").hidden = st.ffmpeg;
   Object.entries(TYPES).forEach(([k, t]) => $("#addWidget").append(el("button", { onclick: () => addWidget(k) }, t.label)));

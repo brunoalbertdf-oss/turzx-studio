@@ -19,6 +19,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import autostart
 import decor
+from version import VERSION
 import renderer
 import themes
 from engine import Engine, save_config
@@ -92,7 +93,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/":
             path = "/index.html"
         if path == "/api/state":
-            return self._send({"config": engine.cfg, "catalog": CATALOG, "fonts": renderer.list_fonts(),
+            return self._send({"version": VERSION, "config": engine.cfg, "catalog": CATALOG, "fonts": renderer.list_fonts(),
                                "media": media_list(), "ffmpeg": bool(engine.media.ffmpeg), **self._status()})
         if path == "/api/debug/fps":
             pm = engine.sensors.fps.presentmon
