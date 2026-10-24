@@ -4,6 +4,7 @@ Protocolo serial (115200 baud). Os comandos são enviados em blocos de 250 bytes
 O buffer nativo da tela é em paisagem: 800 x 480.
 """
 import math
+import os
 import time
 
 import serial
@@ -22,6 +23,20 @@ PRE_UPDATE_BITMAP = bytes((0x86, 0xEF, 0x69, 0x00, 0x00, 0x00, 0x01))
 START_DISPLAY_BITMAP = bytes((0x2C,))
 DISPLAY_BITMAP_5INCH = bytes((0xC8, 0xEF, 0x69, 0x00, 0x17, 0x70))
 UPDATE_BITMAP = bytes((0xCC, 0xEF, 0x69, 0x00))
+RESTART = bytes((0x84, 0xEF, 0x69, 0x00, 0x00, 0x00, 0x01))
+
+
+class ScreenDesync(RuntimeError):
+    """A tela perdeu a sincronia e só volta reiniciando."""
+
+TRACE = {"on": False}
+TRACE_PATH = os.path.join(os.environ.get("TEMP", "."), "turzx-trace.log")
+
+
+def _trace(msg, t):
+    with open(TRACE_PATH, "a", encoding="utf8") as f:
+        f.write(f"{time.strftime('%H:%M:%S', time.localtime(t))}.{int(t * 1000) % 1000:03d} {msg}" + chr(10))
+
 
 AWAKE_IDS = {(0x1D6B, 0x0121), (0x1D6B, 0x0106), (0x0525, 0xA4A7)}
 
@@ -46,6 +61,24 @@ class TurzxScreen:
     def __init__(self, port=None):
         self.port = port or find_port()
         self.ser = serial.Serial(self.port, 115200, timeout=1, write_timeout=10, rtscts=True)
+        w, r = self.ser.write, self.ser.read  # diagnóstico: registra o tráfego USB quando TRACE estiver ligado
+
+        def tw(data):
+            t = time.time()
+            n = w(data)
+            if TRACE["on"]:
+                _trace(f"W {len(data):7d} cmd={data[0]:02x} {1000 * (time.time() - t):6.0f}ms", t)
+            return n
+
+        def tr(size=1):
+            t = time.time()
+            b = r(size)
+            if TRACE["on"]:
+                txt = "".join(c for c in b[:40].decode("latin1") if c.isprintable())
+                _trace(f"R {len(b):7d} {1000 * (time.time() - t):6.0f}ms {txt}", t)
+            return b
+
+        self.ser.write, self.ser.read = tw, tr
         self.rom_version = 87
         self.update_count = 0
         self.screen_id = ""
@@ -187,10 +220,16 @@ class TurzxScreen:
             body += w.to_bytes(2, "big")
             body += pixels[r * row:(r + 1) * row]
         header = UPDATE_BITMAP + (len(body) + 2).to_bytes(3, "big") + bytes(3) + self.update_count.to_bytes(4, "big")
-        if len(body) > 250:
-            body = bytearray(_chunk_join(bytes(body)))
-        body += b"\xEF\x69"
+        # A marca de fim EF 69 entra junto na divisão em blocos de 249 (como o app da TURZX faz).
+        # Acrescentá-la depois faz o "69" cair no byte separador quando len(body) % 249 == 248, e a tela
+        # trava pedindo reenvio.
         self._send(header)
-        self._send(bytes(body))
-        self._send(QUERY_STATUS, read=1024)
+        self._send(_chunk_join(bytes(body) + b"\xEF\x69"))
+        status = self._send(QUERY_STATUS, read=1024)
         self.update_count += 1
+        if b"needReSend:1" in status or not status:
+            raise ScreenDesync("a tela pediu reenvio")
+
+    def restart(self):
+        """Reinicia a tela (o mesmo que o botão do app TURZX). Ela volta à USB em ~10 s."""
+        self._send(RESTART)

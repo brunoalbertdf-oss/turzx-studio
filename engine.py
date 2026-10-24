@@ -11,6 +11,7 @@ from PIL import Image, ImageChops
 import renderer
 from media import MediaCache, convert_for_device, device_video_name
 from sensors import Sensors
+import turzx_screen
 from turzx_screen import TurzxScreen, WIDTH, HEIGHT
 from weather import Weather
 import defaults
@@ -304,6 +305,15 @@ class Engine:
                 self._brightness_sent = None
                 self._loop(lcd)
                 lcd.close()  # parada pedida: libera a porta para outra instância
+            except turzx_screen.ScreenDesync as e:
+                self.status.update(connected=False, message="Reiniciando a tela (perdeu a sincronia)…")
+                print(time.ctime(), "tela:", e, "- reiniciando")
+                try:
+                    lcd.restart()
+                    lcd.close()
+                except Exception:
+                    pass
+                time.sleep(12)
             except Exception as e:
                 self.status.update(connected=False, message=f"Desconectada: {e}")
                 print("tela:", e)
@@ -342,6 +352,12 @@ class Engine:
             self._leave_device_video(lcd)
             size, rot = ROTATIONS.get(st.get("orientation"), ROTATIONS["landscape"])
             frame = renderer.render(screen, size, self.context(screen, self.media))
+            if turzx_screen.TRACE["on"]:  # contador grande para cruzar com o registro
+                from PIL import ImageDraw
+                self._trace_n = getattr(self, "_trace_n", 0) + 1
+                ImageDraw.Draw(frame).rectangle([0, 0, 170, 44], fill="black")
+                ImageDraw.Draw(frame).text((6, 4), f"{self._trace_n} {time.strftime('%H:%M:%S')}",
+                                           font=renderer.font("consola.ttf", 26), fill="yellow")
             self.media.sweep()
             self.last_frame = frame
             native = frame.rotate(rot, expand=True) if rot else frame

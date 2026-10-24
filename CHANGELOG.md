@@ -12,6 +12,9 @@
   ativado uma vez pelo Agendador de Tarefas, como no app original. O RivaTuner fica de reserva.
 - Aviso no primeiro uso, faixa no editor e painel "Fontes de dados" quando o Afterburner ou o
   RivaTuner não são encontrados.
+- **Correção do congelamento da tela**: a marca de fim das atualizações parciais passa a entrar na divisão
+  em blocos de 249 bytes, como no app da TURZX. Antes, cerca de 1 em cada 249 atualizações chegava corrompida
+  e a tela travava pedindo reenvio. Como rede de segurança, se a tela pedir reenvio, o app a reinicia e reconecta sozinho.
 - Correção: respostas JSON declaram UTF-8 (acentos corretos em qualquer cliente).
 
 ## 1.0.0 (24/10/2026)

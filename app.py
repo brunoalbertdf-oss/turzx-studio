@@ -167,6 +167,10 @@ class Handler(BaseHTTPRequestHandler):
                 engine.device_call(lambda lcd: lcd.delete_video(name), timeout=30)
                 engine._video = None  # se era o vídeo tocando, a tela de vídeo envia de novo na próxima vez
                 return self._send(self._device_info())
+            if url.path == "/api/debug/trace":  # liga/desliga o registro do tráfego USB
+                import turzx_screen
+                turzx_screen.TRACE["on"] = qs.get("on", ["1"])[0] == "1"
+                return self._send({"ok": True, "on": turzx_screen.TRACE["on"], "path": turzx_screen.TRACE_PATH})
             if url.path == "/api/quit":  # usado para atualizar o programa (o servidor só aceita conexões locais)
                 threading.Timer(0.5, QUIT_APP).start()
                 return self._send({"ok": True})
