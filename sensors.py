@@ -4,8 +4,9 @@ Fontes:
 - psutil: CPU, RAM, disco, rede, uptime.
 - Windows (WMI): nome e fabricante da CPU e da GPU.
 - nvidia-smi: GPU NVIDIA (uso, temperatura, memória, potência, ventoinha).
-- LibreHardwareMonitor (opcional): temperatura/potência da CPU e dados de GPUs AMD/Intel, via o
-  "Remote Web Server" dele (Options > Remote Web Server > Run, porta 8085).
+- MSI Afterburner (recomendado): temperatura/potência da CPU e todos os dados da GPU.
+- RivaTuner Statistics Server (vem com o Afterburner): FPS do jogo.
+- LibreHardwareMonitor (opcional, reserva): via o "Remote Web Server" dele (porta 8085).
 """
 import ctypes
 import json
@@ -20,7 +21,8 @@ from datetime import datetime
 
 import psutil
 
-from fps import FpsReader
+import afterburner
+from fps import read_rtss, rtss_running
 
 DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
@@ -28,15 +30,15 @@ HISTORY_LEN = 120
 
 # Descrição dos valores disponíveis (mostrada no editor).
 CATALOG = {
-    "cpu_percent": "Uso da CPU (%)", "cpu_freq": "Frequência da CPU (MHz)", "cpu_temp": "Temperatura da CPU (°C) *LHM",
-    "cpu_power": "Potência da CPU (W) *LHM", "cpu_name": "Modelo da CPU (curto)", "cpu_name_full": "Modelo da CPU (completo)",
+    "cpu_percent": "Uso da CPU (%)", "cpu_freq": "Frequência da CPU (MHz)", "cpu_temp": "Temperatura da CPU (°C) *Afterburner",
+    "cpu_power": "Potência da CPU (W) *Afterburner", "cpu_name": "Modelo da CPU (curto)", "cpu_name_full": "Modelo da CPU (completo)",
     "cpu_vendor": "Fabricante da CPU", "cpu_cores": "Núcleos / threads",
     "ram_percent": "Uso da RAM (%)", "ram_used": "RAM usada (GB)", "ram_total": "RAM total (GB)",
     "gpu_percent": "Uso da GPU (%)", "gpu_temp": "Temperatura da GPU (°C)", "gpu_mem_percent": "VRAM usada (%)",
     "gpu_mem_used": "VRAM usada (GB)", "gpu_power": "Potência da GPU (W)", "gpu_fan": "Ventoinha da GPU (%)",
     "gpu_clock": "Clock da GPU (MHz)", "gpu_name": "Modelo da GPU (curto)", "gpu_name_full": "Modelo da GPU (completo)",
     "gpu_vendor": "Fabricante da GPU", "gpu_mem_total": "VRAM total (GB)",
-    "fps": "FPS do jogo", "frametime": "Tempo de quadro (ms)", "fps_app": "Jogo medido",
+    "fps": "FPS do jogo *RivaTuner", "frametime": "Tempo de quadro (ms)", "fps_app": "Jogo medido",
     "disk_percent": "Uso do disco C: (%)", "net_down": "Download (KB/s)", "net_up": "Upload (KB/s)",
     "uptime": "Tempo ligado", "time": "Hora (HH:MM)", "time_s": "Hora (HH:MM:SS)", "date": "Data (dd/mm/aaaa)",
     "weekday": "Dia da semana", "day": "Dia", "month": "Mês abreviado", "hostname": "Nome do PC",
@@ -147,7 +149,6 @@ class Sensors:
         self._net = psutil.net_io_counters()
         self._net_t = time.time()
         self._lock = threading.Lock()
-        self.fps = FpsReader()
         psutil.cpu_percent()
         threading.Thread(target=self._loop, daemon=True).start()
 
@@ -188,12 +189,19 @@ class Sensors:
         self._net, self._net_t = n, t
         up = int(time.time() - psutil.boot_time())
         v["uptime"] = f"{up // 86400}d {up % 86400 // 3600:02d}h{up % 3600 // 60:02d}"
-        try:
-            v.update(self.fps.read() or {"fps": "—", "frametime": "—", "fps_app": "", "fps_source": ""})
-        except Exception:
-            v.update(fps="—", frametime="—", fps_app="", fps_source="")
+        v.update(fps="—", frametime="—", fps_app="", fps_source="")
         v.update(self._nvidia())
-        v.update(self._lhm())
+        lhm = self._lhm()
+        v.update({k: x for k, x in lhm.items() if k not in v})
+        try:
+            ab = afterburner.read()  # o Afterburner é a fonte principal quando está aberto
+            v.update(ab)
+            v["afterburner"] = bool(ab)
+            rt = read_rtss()  # FPS do jogo em primeiro plano (mais preciso que o "Framerate" do Afterburner)
+            v.update(rt)
+            v["rtss"] = bool(rt) or rtss_running()
+        except Exception as e:
+            print("afterburner/rtss:", e)
         with self._lock:
             self.values.update(v)
             for k, h in self.history.items():

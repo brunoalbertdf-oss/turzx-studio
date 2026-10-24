@@ -1,4 +1,5 @@
 :root {
+  --ok: #8dffb0;
   --bg: #12141c; --panel: #1a1d28; --panel2: #232736; --line: #2e3345; --text: #e6e8f0;
   --muted: #8b91a8; --accent: #4cc2ff; --danger: #ff5c6c; --sel: #ffcc33;
 }
@@ -113,3 +114,10 @@ aside { background: var(--panel); padding: 12px; overflow: auto; }
 .theme b { display: block; margin-top: 4px; }
 .theme .tag { font-size: 11px; color: var(--muted); }
 .theme.active { border-color: var(--accent); }
+
+.banner { background: #4a3a10; color: #ffe9a8; padding: 8px 14px; border-bottom: 1px solid #7a6020; }
+.banner a { color: #fff; }
+.banner button { margin-left: 10px; }
+#sources p { margin: 4px 0; }
+#sources .ok { color: var(--ok); }
+#sources .bad { color: var(--danger); }

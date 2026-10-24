@@ -27,6 +27,12 @@
   <span id="saveState" class="muted"></span>
 </header>
 
+<div id="abBanner" class="banner" hidden>
+  <b>MSI Afterburner não encontrado.</b> Para a temperatura da CPU, os dados completos da GPU e o FPS dos jogos,
+  instale o <a href="https://www.msi.com/Landing/afterburner/graphics-cards" target="_blank">MSI Afterburner</a>
+  (marque também o <i>RivaTuner Statistics Server</i> na instalação) e deixe os dois abertos, iniciando com o Windows.
+  <button id="abDismiss">Entendi</button>
+</div>
 <main>
   <aside id="left">
     <div class="tabs">
@@ -84,8 +90,8 @@
 
     <section id="tab-settings" class="tab">
       <label><input id="autostart" type="checkbox"> Iniciar com o Windows</label>
-      <label><input id="adminMode" type="checkbox"> Modo administrador: FPS nativo do Windows (PresentMon)</label>
-      <p id="fpsStatus" class="muted"></p>
+      <h4>Fontes de dados</h4>
+      <div id="sources" class="muted"></div>
       <label>Transição entre telas
         <select id="transition"><option value="fade">Suave (apaga e acende)</option>
           <option value="none">Instantânea</option></select></label>
@@ -93,8 +99,7 @@
       <label>Porta serial (vazio = automático) <input id="port" placeholder="ex.: COM3"></label>
       <label>Caminho do ffmpeg (vazio = automático) <input id="ffmpeg"></label>
       <label>LibreHardwareMonitor (temp. da CPU) <input id="lhm"></label>
-      <p class="muted">Para a temperatura da CPU: abra o LibreHardwareMonitor como administrador e ative
-        <i>Options → Remote Web Server → Run</i>.</p>
+
       <h4>Valores disponíveis</h4>
       <table id="catalog" class="catalog"></table>
     </section>

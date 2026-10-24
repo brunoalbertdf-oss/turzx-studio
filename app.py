@@ -3,6 +3,7 @@
 Uso: python app.py [--background] [--no-browser] [--no-tray]
   --background  inicia sem abrir o editor (usado ao iniciar com o Windows)
 """
+import ctypes
 import io
 import json
 import mimetypes
@@ -19,7 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import autostart
 import renderer
 import themes
-from engine import Engine
+from engine import Engine, save_config
 from paths import DEVICE_CACHE, LOG_PATH, MEDIA_DIR, WEB_DIR, ensure_data_dir
 from sensors import CATALOG
 
@@ -27,8 +28,6 @@ HOST, PORT = "127.0.0.1", 8777
 MEDIA_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".mp4", ".mkv", ".webm", ".mov", ".avi"}
 
 engine = None  # criado em main()
-STATE = {"admin": autostart.is_admin(), "admin_task": False}
-RESTART_ELEVATED = None  # definido em main()
 
 
 def media_list():
@@ -69,7 +68,7 @@ class Handler(BaseHTTPRequestHandler):
         values = engine.sensors.snapshot()
         values.update(engine.weather.values)
         return {"status": engine.status, "current": engine.current, "pinned": engine.pinned, "values": values,
-                "video_errors": engine.video_errors, "fps_status": engine.sensors.fps.status(), **STATE}
+                "video_errors": engine.video_errors}
 
     def _device_info(self):
         def query(lcd):
@@ -141,7 +140,7 @@ class Handler(BaseHTTPRequestHandler):
                 cfg = json.loads(self._body())
                 engine.update_config(cfg)
                 want = bool(cfg.get("settings", {}).get("autostart"))
-                if not STATE["admin_task"] and want != autostart.is_enabled():
+                if want != autostart.is_enabled():
                     autostart.set_enabled(want)
                 return self._send({"ok": True})
             if url.path == "/api/upload":
@@ -163,20 +162,6 @@ class Handler(BaseHTTPRequestHandler):
                 engine.device_call(lambda lcd: lcd.delete_video(name), timeout=30)
                 engine._video = None  # se era o vídeo tocando, a tela de vídeo envia de novo na próxima vez
                 return self._send(self._device_info())
-            if url.path == "/api/admin_mode":
-                on = qs.get("on", ["1"])[0] == "1"
-                code = autostart.run_elevated("--install-admin-task" if on else "--remove-admin-task")
-                if code is None:
-                    return self._send({"error": "permissão de administrador não concedida"}, code=403)
-                if code != 0:
-                    return self._send({"error": f"o Windows recusou (código {code})"}, code=500)
-                STATE["admin_task"] = on
-                if on:
-                    threading.Timer(0.5, RESTART_ELEVATED).start()
-                    return self._send({"ok": True, "restarting": True})
-                if engine.cfg["settings"].get("autostart"):
-                    autostart.set_enabled(True)
-                return self._send({"ok": True})
             if url.path == "/api/skin/use":
                 name = qs.get("name", [""])[0]
                 cfg = json.loads(json.dumps(engine.cfg))
@@ -216,6 +201,27 @@ class Handler(BaseHTTPRequestHandler):
         self._send({"error": "não encontrado"}, code=404)
 
 
+AFTERBURNER_MSG = (
+    "Para mostrar a temperatura da CPU, os dados completos da GPU e o FPS dos jogos, o TURZX Studio usa o "
+    "MSI Afterburner e o RivaTuner Statistics Server, que não foram encontrados abertos.\n\n"
+    "1. Baixe o MSI Afterburner no site oficial da MSI:\n   https://www.msi.com/Landing/afterburner/graphics-cards\n"
+    "2. Na instalação, deixe marcado o RivaTuner Statistics Server.\n"
+    "3. Deixe os dois abertos e iniciando com o Windows.\n\n"
+    "O resto (relógio, tempo, uso de CPU/GPU/RAM, HDs, GIFs) funciona sem eles. "
+    "Este aviso aparece só uma vez; o estado fica em Ajustes → Fontes de dados.")
+
+
+def warn_missing_afterburner():
+    """Aviso de primeiro uso (equivale ao aviso de instalação)."""
+    time.sleep(8)
+    st = engine.cfg["settings"]
+    if engine.sensors.snapshot().get("afterburner") or st.get("afterburner_warned"):
+        return
+    st["afterburner_warned"] = True
+    save_config(engine.cfg)
+    ctypes.windll.user32.MessageBoxW(0, AFTERBURNER_MSG, "TURZX Studio: MSI Afterburner recomendado", 0x40 | 0x10000)
+
+
 def already_running(url):
     try:
         urllib.request.urlopen(url + "api/status", timeout=1.5)
@@ -225,12 +231,8 @@ def already_running(url):
 
 
 def main():
-    global engine, RESTART_ELEVATED
+    global engine
     args = set(sys.argv[1:])
-    if "--install-admin-task" in args:  # chamado elevado pelo próprio app
-        sys.exit(autostart.install_task())
-    if "--remove-admin-task" in args:
-        sys.exit(autostart.remove_task())
     ensure_data_dir()
     if getattr(sys, "frozen", False):  # sem console: mensagens vão para o log
         sys.stdout = sys.stderr = open(LOG_PATH, "a", encoding="utf8", buffering=1)
@@ -240,30 +242,19 @@ def main():
             webbrowser.open(url)
         return
     engine = Engine()
-    STATE["admin_task"] = autostart.task_installed()
-    engine.cfg["settings"]["autostart"] = STATE["admin_task"] or autostart.is_enabled()
+    engine.cfg["settings"]["autostart"] = autostart.is_enabled()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     engine.start()
+    threading.Thread(target=warn_missing_afterburner, daemon=True).start()
     print(f"{time.ctime()} TURZX Studio rodando em {url}")
     if not args & {"--background", "--no-browser"}:
         threading.Timer(1.0, webbrowser.open, [url]).start()
 
     def quit_app():
         engine.stop()
-        engine.sensors.fps.presentmon.stop()
         server.shutdown()
         server.server_close()
-
-    def restart_elevated():
-        """Fecha esta instância (porta serial e servidor) e abre a versão elevada pela tarefa agendada."""
-        quit_app()
-        engine.thread.join(10)
-        autostart.run_task()
-        import tray
-        tray.stop()
-
-    RESTART_ELEVATED = restart_elevated
 
     try:
         if "--no-tray" in args:

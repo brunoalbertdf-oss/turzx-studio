@@ -38,8 +38,7 @@ def run(engine, url, on_quit):
     menu = pystray.Menu(
         pystray.MenuItem("Abrir editor", lambda: webbrowser.open(url), default=True),
         pystray.MenuItem("Próxima tela", lambda: (setattr(engine, "pinned", None), engine.step(1))),
-        pystray.MenuItem("Iniciar com o Windows", toggle_autostart, checked=lambda item: autostart.is_enabled(),
-                         visible=lambda item: not autostart.task_installed()),
+        pystray.MenuItem("Iniciar com o Windows", toggle_autostart, checked=lambda item: autostart.is_enabled()),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Sair", lambda icon: (icon.stop(), on_quit())),
     )

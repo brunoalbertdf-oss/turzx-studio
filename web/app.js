@@ -576,23 +576,6 @@ $("#pinScreen").addEventListener("click", async () => {
 });
 $("#prevScreen").addEventListener("click", () => api("/api/control", { action: "prev" }).then(pollStatus));
 $("#nextScreen").addEventListener("click", () => api("/api/control", { action: "next" }).then(pollStatus));
-$("#adminMode").addEventListener("change", async (e) => {
-  const on = e.target.checked;
-  const msg = on
-    ? "O Windows vai pedir permissão de administrador UMA vez. O TURZX Studio passa a iniciar com o Windows " +
-      "como administrador (pelo Agendador de Tarefas) para medir o FPS de qualquer jogo, e reinicia agora. Continuar?"
-    : "Desativar o modo administrador? O Windows vai pedir permissão para remover a tarefa agendada.";
-  if (!confirm(msg)) { e.target.checked = !on; return; }
-  $("#fpsStatus").textContent = "Aguardando a permissão do Windows…";
-  const r = await fetch(`/api/admin_mode?on=${on ? 1 : 0}`, { method: "POST" }).then((x) => x.json()).catch(() => ({}));
-  if (r.error) { alert(r.error); e.target.checked = !on; return; }
-  if (r.restarting) {
-    $("#fpsStatus").textContent = "Reiniciando como administrador…";
-    const wait = setInterval(async () => {
-      try { const s = await fetch("/api/status").then((x) => x.json()); if (s.admin) { clearInterval(wait); location.reload(); } } catch {}
-    }, 1500);
-  }
-});
 $("#liveView").addEventListener("change", (e) => { $("#overlay").classList.toggle("live", e.target.checked); refreshPreview(); });
 $("#showGrid").addEventListener("change", (e) => $("#overlay").classList.toggle("grid", e.target.checked));
 
@@ -621,6 +604,33 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "Escape") { selW = null; renderOverlay(); renderLayers(); renderProps(); }
 });
 
+// ------------------------------------------------------------ fontes de dados (Afterburner / RivaTuner)
+
+let bannerDismissed = false;
+try { bannerDismissed = localStorage.getItem("abBanner") === "off"; } catch {}
+$("#abDismiss").addEventListener("click", () => {
+  bannerDismissed = true; $("#abBanner").hidden = true;
+  try { localStorage.setItem("abBanner", "off"); } catch {}
+});
+
+function renderSources(v) {
+  const ab = !!v.afterburner, rt = !!v.rtss;
+  $("#abBanner").hidden = ab || bannerDismissed;
+  const line = (ok, name, okText, badText) =>
+    el("p", {}, el("span", { class: ok ? "ok" : "bad" }, ok ? "✓ " : "✗ "), el("b", {}, name), " — ", ok ? okText : badText);
+  const box = $("#sources"); box.innerHTML = "";
+  box.append(
+    line(ab, "MSI Afterburner", "conectado: temperatura da CPU e dados completos da GPU.",
+      "não encontrado. Sem ele não há temperatura da CPU (e GPUs AMD/Intel ficam sem dados)."),
+    line(rt, "RivaTuner Statistics Server", "ativo: FPS dos jogos.", "não encontrado: o FPS não aparece."),
+    el("p", {}, `FPS agora: ${v.fps} ${v.fps_app ? "(" + v.fps_app + ")" : ""} ${v.fps_source ? "· via " + v.fps_source : ""}`),
+    el("p", {}, "Dicas: deixe o Afterburner e o RivaTuner iniciando com o Windows; o RivaTuner precisa estar aberto ",
+      "antes do jogo. No Afterburner, em Configurações → Monitoramento, deixe marcados \"CPU temperature\", ",
+      "\"CPU power\" e \"Framerate\". O CS2 bloqueia o RivaTuner (Trusted Mode da Valve), então o FPS não aparece nele."),
+    el("p", {}, el("a", { href: "https://www.msi.com/Landing/afterburner/graphics-cards", target: "_blank" },
+      "Baixar o MSI Afterburner (site oficial da MSI)")));
+}
+
 // ------------------------------------------------------------ status ao vivo
 
 async function pollStatus() {
@@ -635,10 +645,7 @@ async function pollStatus() {
     if (liveIndex !== r.current) { liveIndex = r.current; renderScreens(); }
     const pinned = r.pinned != null;
     $("#pinScreen").dataset.pinned = pinned ? "1" : "0";
-    $("#adminMode").checked = r.admin_task;
-    $("#autostart").disabled = r.admin_task;
-    if (r.admin_task) $("#autostart").checked = true;
-    $("#fpsStatus").textContent = `Fonte do FPS: ${r.fps_status}` + (r.admin ? " · rodando como administrador" : "");
+    renderSources(r.values);
     $("#pinScreen").textContent = pinned ? `Retomar carrossel (fixa: ${cfg.screens[r.pinned]?.name || r.pinned})` : "Mostrar agora";
   } catch {
     $("#conn").className = "pill bad"; $("#conn").textContent = "App fechado";

@@ -14,7 +14,7 @@ previsão do tempo, GIFs e vídeos fluidos.
   - CPU e GPU com **nome do modelo e selo do fabricante** (AMD, NVIDIA, Intel);
   - uso, temperatura, clock, potência e VRAM;
   - RAM, rede e **espaço de cada HD/SSD**.
-- **FPS dos jogos** de qualquer placa de vídeo, com tempo de quadro e o nome do jogo (ver [FPS](#fps-dos-jogos)).
+- **FPS dos jogos**, com tempo de quadro e o nome do jogo (ver [FPS](#fps-dos-jogos)).
 - **Tempo** da sua cidade com previsão de 5 dias (Open-Meteo, sem cadastro).
 - **Carrossel** de telas com **transição suave**: o brilho apaga e acende durante a troca.
 - **13 skins prontas**: Saiyajin, Super Saiyajin Blue, Esferas do Dragão, Ninja da Folha, Tático,
@@ -42,28 +42,37 @@ previsão do tempo, GIFs e vídeos fluidos.
 
 Seus dados ficam em `%APPDATA%\TURZX Studio`: configuração, mídias, logos e um log.
 
-### Opcionais
+### Recomendado: MSI Afterburner + RivaTuner
 
-| Para | Instale | Por quê |
-|---|---|---|
-| Vídeo fluido em tela cheia | nada (usa o `ffmpeg.exe` do app TURZX original, achado automaticamente) ou o [ffmpeg](https://ffmpeg.org) no PATH | converter GIF/vídeo para o formato da tela |
-| Temperatura da CPU, GPUs AMD/Intel | [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) como administrador, com *Options → Remote Web Server → Run* | o Windows não expõe esses sensores sem driver |
-| FPS dos jogos | ver abaixo | — |
+> **Instale o [MSI Afterburner](https://www.msi.com/Landing/afterburner/graphics-cards)** (site oficial da MSI)
+> e, na instalação, deixe marcado o **RivaTuner Statistics Server**. Deixe os dois abertos e iniciando com o Windows.
+
+O Windows não libera a temperatura da CPU nem o FPS dos jogos para programas comuns. O Afterburner
+roda como administrador, mede tudo isso e compartilha os dados, e o TURZX Studio lê esses dados. Com ele aberto,
+o app mostra:
+- **temperatura, potência e clock da CPU**;
+- **todos os dados da GPU**: temperatura, uso, potência, clock, ventoinha e VRAM, de NVIDIA, AMD ou Intel;
+- o **FPS do jogo**, pelo RivaTuner.
+
+No Afterburner, em *Configurações → Monitoramento*, deixe marcados *CPU temperature*, *CPU power* e
+*Framerate*. Se o Afterburner não for encontrado, o TURZX Studio avisa no primeiro uso e mostra uma faixa
+no editor. O estado de cada fonte aparece em **Ajustes → Fontes de dados**.
+
+Sem o Afterburner, continuam funcionando o relógio, o tempo, o uso de CPU/GPU/RAM, os HDs, os GIFs e os
+dados de GPUs NVIDIA (pelo driver).
+
+| Para | Use |
+|---|---|
+| Vídeo fluido em tela cheia | nada: usa o `ffmpeg.exe` do app TURZX original, achado automaticamente. Ou instale o [ffmpeg](https://ffmpeg.org) no PATH |
 
 ### FPS dos jogos
 
-Os apps dos fabricantes (NVIDIA App, GeForce Experience, AMD Adrenalin) não disponibilizam o
-contador do overlay para outros programas. O TURZX Studio mede o FPS do jogo em primeiro plano assim:
+O FPS vem do **RivaTuner Statistics Server**: é medido o jogo que está em primeiro plano, e medições
+paradas são ocultadas. O RivaTuner precisa estar aberto **antes** de abrir o jogo.
 
-1. **PresentMon** (incluído, da Intel, licença MIT): mede pelo próprio Windows e funciona com
-   **qualquer placa de vídeo**, sem instalar nada. O Windows só libera essa medição para programas
-   executados como administrador. Ative em **Ajustes → Modo administrador**. O Windows pede permissão
-   **uma vez** e cria uma tarefa no Agendador de Tarefas que abre o TURZX Studio como administrador ao
-   fazer login, sem perguntar de novo. Desmarcar a opção remove a tarefa.
-2. **RivaTuner Statistics Server** (vem com o MSI Afterburner): usado automaticamente quando o
-   modo administrador está desligado e o RivaTuner está aberto.
-
-A aba Ajustes mostra qual fonte está em uso.
+> **CS2 e outros jogos com proteção contra injeção:** o "Trusted Mode" do CS2 bloqueia o RivaTuner,
+> então o FPS não aparece nele. Isso acontece também com o overlay do Afterburner. A opção de inicialização
+> `-allow_third_party_software` libera, mas reduz o seu *trust factor* no matchmaking, então não recomendamos.
 
 ### Logos oficiais dos fabricantes
 
@@ -112,10 +121,10 @@ Para rodar sem compilar: `pip install -r requirements.txt` e `python app.py`.
 | `renderer.py`, `decor.py` | widgets e desenhos das skins |
 | `themes.py`, `defaults.py` | skins e telas prontas, configuração inicial |
 | `sensors.py`, `weather.py` | dados do PC e tempo |
-| `fps.py`, `tools/PresentMon.exe` | FPS (PresentMon, com o RivaTuner de reserva) |
+| `afterburner.py`, `fps.py` | sensores do MSI Afterburner e FPS do RivaTuner |
 | `media.py` | imagens, GIFs, vídeos e conversão para a tela |
 | `app.py`, `web/` | servidor local e editor |
-| `tray.py`, `autostart.py` | bandeja, início com o Windows e modo administrador |
+| `tray.py`, `autostart.py` | bandeja e início com o Windows |
 
 ## Avisos
 
@@ -129,5 +138,4 @@ Para rodar sem compilar: `pip install -r requirements.txt` e `python app.py`.
 
 ## Licença
 
-[MIT](LICENSE). Inclui o [PresentMon](https://github.com/GameTechDev/PresentMon) da Intel, também sob licença
-MIT ([third_party/PresentMon-LICENSE.txt](third_party/PresentMon-LICENSE.txt)).
+[MIT](LICENSE)
