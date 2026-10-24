@@ -1,9 +1,7 @@
 """Configuração inicial: skins e três telas de exemplo (paisagem 800x480)."""
-from themes import dashboard
+from themes import builtin_skins, dashboard
 
-SKINS = {
-    "Neon Noite": {"bg1": "#0e1430", "bg2": "#3a1250", "accent": "#00dcff", "accent2": "#ff4fa0",
-                   "text": "#f0f2ff", "muted": "#9aa3cc", "panel": "#ffffff14", "warn": "#ff5050"},
+SKINS = {**builtin_skins(), **{
     "Verde Matrix": {"bg1": "#020a04", "bg2": "#0b2a12", "accent": "#39ff6a", "accent2": "#c6ff3a",
                      "text": "#e8ffe8", "muted": "#6fae7c", "panel": "#39ff6a14", "warn": "#ffcc00"},
     "Pôr do Sol": {"bg1": "#2b0f2e", "bg2": "#b8452a", "accent": "#ffb347", "accent2": "#ff5e78",
@@ -12,7 +10,7 @@ SKINS = {
              "text": "#132033", "muted": "#4a5c78", "panel": "#ffffff88", "warn": "#d12f2f"},
     "RTX Verde": {"bg1": "#0a0a0a", "bg2": "#1a1f12", "accent": "#76b900", "accent2": "#e0e0e0",
                   "text": "#ffffff", "muted": "#8c8c8c", "panel": "#ffffff10", "warn": "#ff3b3b"},
-}
+}}
 
 
 def T(text, x, y, w, h, size=24, color="$text", font="segoeui.ttf", align="left", **kw):

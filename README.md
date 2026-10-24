@@ -2,10 +2,10 @@
 
 Programa alternativo, gratuito e de código aberto para a **tela secundária TURZX de 5"**
 (também vendida como "Turing Smart Screen 5 inch", 480×800). Substitui o app original por um
-editor visual no navegador, com temas, skins, carrossel de telas, informações do PC,
+editor visual no navegador, com skins, carrossel de telas, informações do PC,
 previsão do tempo, GIFs e vídeos fluidos.
 
-![Temas incluídos](docs/img/temas.png)
+![Skins incluídas](docs/img/skins.png)
 
 ## O que ele faz
 
@@ -14,11 +14,14 @@ previsão do tempo, GIFs e vídeos fluidos.
   - CPU e GPU com **nome do modelo e selo do fabricante** (AMD, NVIDIA, Intel);
   - uso, temperatura, clock, potência e VRAM;
   - RAM, rede e **espaço de cada HD/SSD**.
-- **FPS dos jogos**, com tempo de quadro e o nome do jogo (ver [FPS](#fps-dos-jogos)).
+- **FPS dos jogos** de qualquer placa de vídeo, com tempo de quadro e o nome do jogo (ver [FPS](#fps-dos-jogos)).
 - **Tempo** da sua cidade com previsão de 5 dias (Open-Meteo, sem cadastro).
 - **Carrossel** de telas com **transição suave**: o brilho apaga e acende durante a troca.
-- **8 temas prontos** e **skins** de cores editáveis. Use `$accent`, `$text`… nas cores
-  para seguir a skin.
+- **13 skins prontas**: Saiyajin, Super Saiyajin Blue, Esferas do Dragão, Ninja da Folha, Tático,
+  Operações, Liberty, Festival, Neon Noite e outras. Cada skin muda **cores, fontes e o fundo
+  decorado de todas as telas** de uma vez, sem mexer no layout. As skins são editáveis. Nas telas, use
+  `$accent`, `$text`… nas cores e `$font_title`/`$font_num` nas fontes para seguir a skin.
+- **Telas prontas**: "Painel completo" e "Relógio e tempo", com um botão cada.
 - **GIFs e vídeos**:
   - em áreas do painel, com o GIF rodando junto das informações;
   - ou em **tela cheia a 24 fps**: o vídeo é gravado na memória da própria tela e tocado por ela.
@@ -50,9 +53,17 @@ Seus dados ficam em `%APPDATA%\TURZX Studio`: configuração, mídias, logos e u
 ### FPS dos jogos
 
 Os apps dos fabricantes (NVIDIA App, GeForce Experience, AMD Adrenalin) não disponibilizam o
-contador de FPS do overlay para outros programas. O TURZX Studio lê o FPS do
-**RivaTuner Statistics Server**, que vem com o MSI Afterburner. Ele mostra o jogo em primeiro plano
-e oculta medições paradas.
+contador do overlay para outros programas. O TURZX Studio mede o FPS do jogo em primeiro plano assim:
+
+1. **PresentMon** (incluído, da Intel, licença MIT): mede pelo próprio Windows e funciona com
+   **qualquer placa de vídeo**, sem instalar nada. O Windows só libera essa medição para programas
+   executados como administrador. Ative em **Ajustes → Modo administrador**. O Windows pede permissão
+   **uma vez** e cria uma tarefa no Agendador de Tarefas que abre o TURZX Studio como administrador ao
+   fazer login, sem perguntar de novo. Desmarcar a opção remove a tarefa.
+2. **RivaTuner Statistics Server** (vem com o MSI Afterburner): usado automaticamente quando o
+   modo administrador está desligado e o RivaTuner está aberto.
+
+A aba Ajustes mostra qual fonte está em uso.
 
 ### Logos oficiais dos fabricantes
 
@@ -98,17 +109,18 @@ Para rodar sem compilar: `pip install -r requirements.txt` e `python app.py`.
 |---|---|
 | `turzx_screen.py` | protocolo serial da tela |
 | `engine.py` | carrossel, renderização, envio incremental, transições e vídeo na tela |
-| `renderer.py`, `decor.py` | widgets e desenhos dos temas |
-| `themes.py`, `defaults.py` | temas prontos e configuração inicial |
-| `sensors.py`, `fps.py`, `weather.py` | dados do PC, FPS e tempo |
+| `renderer.py`, `decor.py` | widgets e desenhos das skins |
+| `themes.py`, `defaults.py` | skins e telas prontas, configuração inicial |
+| `sensors.py`, `weather.py` | dados do PC e tempo |
+| `fps.py`, `tools/PresentMon.exe` | FPS (PresentMon, com o RivaTuner de reserva) |
 | `media.py` | imagens, GIFs, vídeos e conversão para a tela |
 | `app.py`, `web/` | servidor local e editor |
-| `tray.py`, `autostart.py` | bandeja e início com o Windows |
+| `tray.py`, `autostart.py` | bandeja, início com o Windows e modo administrador |
 
 ## Avisos
 
 - Projeto independente, **sem vínculo com a TURZX** nem com os fabricantes de hardware.
-- Os temas são **homenagens de fã**, feitas só com formas e cores originais. Dragon Ball, Naruto,
+- As skins temáticas são **homenagens de fã**, feitas só com formas e cores originais. Dragon Ball, Naruto,
   Counter-Strike, Call of Duty, GTA e Forza são marcas dos seus donos. Nenhuma arte, personagem ou
   logo dessas franquias está incluído.
 - A engenharia reversa foi feita para **interoperabilidade** com um aparelho próprio.
@@ -117,4 +129,5 @@ Para rodar sem compilar: `pip install -r requirements.txt` e `python app.py`.
 
 ## Licença
 
-[MIT](LICENSE)
+[MIT](LICENSE). Inclui o [PresentMon](https://github.com/GameTechDev/PresentMon) da Intel, também sob licença
+MIT ([third_party/PresentMon-LICENSE.txt](third_party/PresentMon-LICENSE.txt)).

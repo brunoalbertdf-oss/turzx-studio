@@ -384,12 +384,26 @@ function renderSkins() {
     const row = colorInput(skin[k], (v) => { skin[k] = v; save(); }, null);
     box.append(el("div", { class: "field" }, el("span", {}, label), ...row.children));
   }
+  for (const [k, label] of [["font_title", "Fonte títulos"], ["font_num", "Fonte números"]]) {
+    const sel = el("select", {}, ...fonts.map((f) => el("option", { value: f }, f)));
+    sel.value = skin[k] || "segoeuib.ttf";
+    sel.addEventListener("change", () => { skin[k] = sel.value; save(); });
+    box.append(el("div", { class: "field" }, el("span", {}, label), sel));
+  }
+  if ((skin.decor || []).length) {
+    const chk = el("input", { type: "checkbox" }); chk.checked = !skin.decor_off;
+    chk.addEventListener("change", () => { skin.decor_off = !chk.checked; save(); });
+    box.append(el("label", { class: "check" }, chk, " Mostrar o fundo decorado da skin"));
+  }
   $("#skinVars").innerHTML = "";
   Object.keys(SKIN_KEYS).forEach((k) => $("#skinVars").append(el("option", { value: `$${k}` })));
 }
 
 $("#skinSelect").addEventListener("change", renderSkins);
-$("#globalSkin").addEventListener("change", (e) => { cfg.settings.skin = e.target.value; $("#skinSelect").value = e.target.value; renderSkins(); save(true); });
+$("#globalSkin").addEventListener("change", (e) => {
+  cfg.settings.skin = e.target.value; $("#skinSelect").value = e.target.value; renderSkins(); save(true);
+  if ($("#tab-skins").classList.contains("active")) loadSkinGallery();
+});
 $("#newSkin").addEventListener("click", () => {
   const n = prompt("Nome da nova skin (copia a atual):"); if (!n || cfg.skins[n]) return;
   cfg.skins[n] = structuredClone(cfg.skins[$("#skinSelect").value]);
@@ -435,30 +449,43 @@ $("#upload").addEventListener("change", async (e) => {
   e.target.value = ""; renderMedia(); renderProps();
 });
 
-// ------------------------------------------------------------ temas
+// ------------------------------------------------------------ galeria de skins e telas prontas
 
-async function loadThemes() {
-  const box = $("#themeList");
-  if (box.childElementCount) return;
-  const list = await fetch("/api/themes").then((r) => r.json());
-  list.forEach((t) => {
-    const apply = async (mode) => {
-      if (mode === "replace" && !confirm(`Trocar TODAS as telas atuais pelas do tema "${t.name}"? (Ctrl+Z desfaz)`)) return;
-      const before = JSON.stringify(cfg);
-      const r = await fetch(`/api/theme/apply?id=${t.id}&mode=${mode}`, { method: "POST" }).then((x) => x.json());
-      if (r.error) return alert(r.error);
-      undoStack.push(before); redoStack.length = 0;
-      cfg = r.config; lastSaved = JSON.stringify(cfg);
-      renderSkins(); selectScreen(r.first);
-    };
-    box.append(el("div", { class: "theme" },
-      el("img", { src: `/api/theme/${t.id}.png`, alt: t.name, loading: "lazy" }),
-      el("b", {}, t.name), el("span", { class: "tag" }, `inspirado em ${t.inspired}`),
-      el("p", { class: "muted" }, t.description),
-      el("div", { class: "row" },
-        el("button", { onclick: () => apply("add") }, "Adicionar ao carrossel"),
-        el("button", { onclick: () => apply("replace") }, "Usar só este"))));
+async function loadSkinGallery() {
+  const box = $("#skinGallery"); box.innerHTML = "";
+  const packs = await fetch("/api/skins").then((r) => r.json());
+  const info = Object.fromEntries(packs.map((p) => [p.name, p]));
+  const names = [...new Set([...packs.map((p) => p.name), ...Object.keys(cfg.skins)])];
+  const screenIdx = Math.max(0, cfg.screens.filter((s) => s.kind !== "device_video").indexOf(screen()));
+  names.forEach((n) => {
+    const p = info[n] || { name: n, description: "Skin personalizada." };
+    const active = cfg.settings.skin === n;
+    box.append(el("div", { class: "theme" + (active ? " active" : "") },
+      el("img", { src: `/api/skin_preview.png?name=${encodeURIComponent(n)}&screen=${screenIdx}`, alt: n, loading: "lazy" }),
+      el("b", {}, n + (active ? "  ✓ em uso" : "")),
+      p.inspired ? el("span", { class: "tag" }, `inspirada em ${p.inspired}`) : null,
+      el("p", { class: "muted" }, p.description),
+      active ? null : el("button", { onclick: async () => {
+        const before = JSON.stringify(cfg);
+        const r = await fetch(`/api/skin/use?name=${encodeURIComponent(n)}`, { method: "POST" }).then((x) => x.json());
+        if (r.error) return alert(r.error);
+        undoStack.push(before); redoStack.length = 0;
+        cfg = r.config; lastSaved = JSON.stringify(cfg);
+        renderSkins(); renderAll(); loadSkinGallery();
+      } }, "Usar esta skin")));
   });
+}
+
+async function initLayouts() {
+  const list = await fetch("/api/layouts").then((r) => r.json());
+  list.forEach((l) => $("#addLayout").append(el("button", { title: l.description, onclick: async () => {
+    const before = JSON.stringify(cfg);
+    const r = await fetch(`/api/layout/add?id=${l.id}`, { method: "POST" }).then((x) => x.json());
+    if (r.error) return alert(r.error);
+    undoStack.push(before); redoStack.length = 0;
+    cfg = r.config; lastSaved = JSON.stringify(cfg);
+    selectScreen(r.index);
+  } }, "+ " + l.name)));
 }
 
 // ------------------------------------------------------------ memória da tela
@@ -549,6 +576,23 @@ $("#pinScreen").addEventListener("click", async () => {
 });
 $("#prevScreen").addEventListener("click", () => api("/api/control", { action: "prev" }).then(pollStatus));
 $("#nextScreen").addEventListener("click", () => api("/api/control", { action: "next" }).then(pollStatus));
+$("#adminMode").addEventListener("change", async (e) => {
+  const on = e.target.checked;
+  const msg = on
+    ? "O Windows vai pedir permissão de administrador UMA vez. O TURZX Studio passa a iniciar com o Windows " +
+      "como administrador (pelo Agendador de Tarefas) para medir o FPS de qualquer jogo, e reinicia agora. Continuar?"
+    : "Desativar o modo administrador? O Windows vai pedir permissão para remover a tarefa agendada.";
+  if (!confirm(msg)) { e.target.checked = !on; return; }
+  $("#fpsStatus").textContent = "Aguardando a permissão do Windows…";
+  const r = await fetch(`/api/admin_mode?on=${on ? 1 : 0}`, { method: "POST" }).then((x) => x.json()).catch(() => ({}));
+  if (r.error) { alert(r.error); e.target.checked = !on; return; }
+  if (r.restarting) {
+    $("#fpsStatus").textContent = "Reiniciando como administrador…";
+    const wait = setInterval(async () => {
+      try { const s = await fetch("/api/status").then((x) => x.json()); if (s.admin) { clearInterval(wait); location.reload(); } } catch {}
+    }, 1500);
+  }
+});
 $("#liveView").addEventListener("change", (e) => { $("#overlay").classList.toggle("live", e.target.checked); refreshPreview(); });
 $("#showGrid").addEventListener("change", (e) => $("#overlay").classList.toggle("grid", e.target.checked));
 
@@ -557,7 +601,7 @@ document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("cli
   b.classList.add("active"); $(`#tab-${b.dataset.tab}`).classList.add("active");
   if (b.dataset.tab === "settings") renderCatalog();
   if (b.dataset.tab === "media") loadDevice();
-  if (b.dataset.tab === "themes") loadThemes();
+  if (b.dataset.tab === "skins") loadSkinGallery();
 }));
 
 document.addEventListener("keydown", (e) => {
@@ -591,6 +635,10 @@ async function pollStatus() {
     if (liveIndex !== r.current) { liveIndex = r.current; renderScreens(); }
     const pinned = r.pinned != null;
     $("#pinScreen").dataset.pinned = pinned ? "1" : "0";
+    $("#adminMode").checked = r.admin_task;
+    $("#autostart").disabled = r.admin_task;
+    if (r.admin_task) $("#autostart").checked = true;
+    $("#fpsStatus").textContent = `Fonte do FPS: ${r.fps_status}` + (r.admin ? " · rodando como administrador" : "");
     $("#pinScreen").textContent = pinned ? `Retomar carrossel (fixa: ${cfg.screens[r.pinned]?.name || r.pinned})` : "Mostrar agora";
   } catch {
     $("#conn").className = "pill bad"; $("#conn").textContent = "App fechado";
@@ -609,7 +657,7 @@ async function init() {
   liveIndex = st.current;
   $("#ffmpegWarn").hidden = st.ffmpeg;
   Object.entries(TYPES).forEach(([k, t]) => $("#addWidget").append(el("button", { onclick: () => addWidget(k) }, t.label)));
-  bindSettings(); renderSkins(); renderMedia(); renderScreens(); renderAll();
+  bindSettings(); renderSkins(); renderMedia(); renderScreens(); renderAll(); initLayouts();
   window.addEventListener("resize", fitStage);
   setInterval(refreshPreview, 1000);
   setInterval(pollStatus, 2000);

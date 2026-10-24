@@ -20,7 +20,7 @@ from datetime import datetime
 
 import psutil
 
-from fps import read_fps
+from fps import FpsReader
 
 DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
@@ -36,7 +36,7 @@ CATALOG = {
     "gpu_mem_used": "VRAM usada (GB)", "gpu_power": "Potência da GPU (W)", "gpu_fan": "Ventoinha da GPU (%)",
     "gpu_clock": "Clock da GPU (MHz)", "gpu_name": "Modelo da GPU (curto)", "gpu_name_full": "Modelo da GPU (completo)",
     "gpu_vendor": "Fabricante da GPU", "gpu_mem_total": "VRAM total (GB)",
-    "fps": "FPS do jogo *RivaTuner", "frametime": "Tempo de quadro (ms) *RivaTuner", "fps_app": "Jogo medido",
+    "fps": "FPS do jogo", "frametime": "Tempo de quadro (ms)", "fps_app": "Jogo medido",
     "disk_percent": "Uso do disco C: (%)", "net_down": "Download (KB/s)", "net_up": "Upload (KB/s)",
     "uptime": "Tempo ligado", "time": "Hora (HH:MM)", "time_s": "Hora (HH:MM:SS)", "date": "Data (dd/mm/aaaa)",
     "weekday": "Dia da semana", "day": "Dia", "month": "Mês abreviado", "hostname": "Nome do PC",
@@ -147,6 +147,7 @@ class Sensors:
         self._net = psutil.net_io_counters()
         self._net_t = time.time()
         self._lock = threading.Lock()
+        self.fps = FpsReader()
         psutil.cpu_percent()
         threading.Thread(target=self._loop, daemon=True).start()
 
@@ -188,9 +189,9 @@ class Sensors:
         up = int(time.time() - psutil.boot_time())
         v["uptime"] = f"{up // 86400}d {up % 86400 // 3600:02d}h{up % 3600 // 60:02d}"
         try:
-            v.update(read_fps() or {"fps": "—", "frametime": "—", "fps_app": ""})
+            v.update(self.fps.read() or {"fps": "—", "frametime": "—", "fps_app": "", "fps_source": ""})
         except Exception:
-            v.update(fps="—", frametime="—", fps_app="")
+            v.update(fps="—", frametime="—", fps_app="", fps_source="")
         v.update(self._nvidia())
         v.update(self._lhm())
         with self._lock:

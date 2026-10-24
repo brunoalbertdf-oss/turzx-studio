@@ -14,6 +14,7 @@ from sensors import Sensors
 from turzx_screen import TurzxScreen, WIDTH, HEIGHT
 from weather import Weather
 import defaults
+import themes
 
 from paths import CONFIG_PATH, DEVICE_CACHE, MEDIA_DIR, ensure_data_dir, find_turzx_dir
 
@@ -34,6 +35,8 @@ def load_config():
             cfg = json.load(f)
         for k, v in defaults.CONFIG.items():
             cfg.setdefault(k, copy.deepcopy(v))
+        for name, skin in themes.builtin_skins().items():  # skins prontas novas aparecem sozinhas
+            cfg["skins"].setdefault(name, skin)
         return cfg
     cfg = copy.deepcopy(defaults.CONFIG)
     save_config(cfg)
@@ -300,6 +303,7 @@ class Engine:
                 self._force_full = True
                 self._brightness_sent = None
                 self._loop(lcd)
+                lcd.close()  # parada pedida: libera a porta para outra instância
             except Exception as e:
                 self.status.update(connected=False, message=f"Desconectada: {e}")
                 print("tela:", e)

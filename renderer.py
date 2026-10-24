@@ -289,6 +289,9 @@ def w_deco(layer, d, wd, box, ctx):
         sub = Image.new("RGBA", (w, h), (0, 0, 0, 0))  # recorta o desenho na caixa do widget
         fn(sub, ImageDraw.Draw(sub), (0, 0, w, h), color(wd.get("color"), ctx.skin, "#ffffff33"),
            color(wd.get("color2"), ctx.skin, "#ffffff11"), wd)
+        op = float(wd.get("opacity", 1))
+        if op < 1:
+            sub.putalpha(sub.getchannel("A").point(lambda v: int(v * op)))
         layer.alpha_composite(sub, (max(0, x), max(0, y)), (max(0, -x), max(0, -y)))
 
 
@@ -341,6 +344,9 @@ WIDGETS = {"text": w_text, "panel": w_panel, "bar": w_bar, "gauge": w_gauge, "gr
            "deco": w_deco, "brand": w_brand, "drives": w_drives}
 
 
+FONT_DEFAULTS = {"font_title": "segoeuib.ttf", "font_num": "segoeuib.ttf", "font": "segoeui.ttf"}
+
+
 class Context:
     def __init__(self, values, history, forecast, skin, media, drives=(), preview=False):
         self.values, self.history, self.forecast, self.skin, self.media = values, history, forecast, skin, media
@@ -361,9 +367,17 @@ def render(screen, size, ctx):
     else:
         canvas = gradient(size, c1, color(bg.get("color2"), ctx.skin, "#3c1450"), bg.get("direction", "vertical"))
 
-    for wd in screen.get("widgets", []):
+    widgets = list(screen.get("widgets", []))
+    if screen.get("skin_decor", True) and not ctx.skin.get("decor_off"):  # fundo decorado da skin
+        sx, sy = size[0] / 800, size[1] / 480
+        widgets = [dict(d, x=d.get("x", 0) * sx, y=d.get("y", 0) * sy, w=d.get("w", 100) * sx, h=d.get("h", 40) * sy)
+                   for d in ctx.skin.get("decor", [])] + widgets
+    for wd in widgets:
         if wd.get("hidden"):
             continue
+        f = wd.get("font")
+        if isinstance(f, str) and f.startswith("$"):  # fonte da skin: $font_title, $font_num, $font
+            wd = dict(wd, font=ctx.skin.get(f[1:]) or FONT_DEFAULTS.get(f[1:], "segoeui.ttf"))
         fn = WIDGETS.get(wd.get("type"))
         if not fn:
             continue

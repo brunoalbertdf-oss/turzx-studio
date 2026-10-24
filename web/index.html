@@ -31,7 +31,6 @@
   <aside id="left">
     <div class="tabs">
       <button data-tab="screens" class="active">Telas</button>
-      <button data-tab="themes">Temas</button>
       <button data-tab="skins">Skins</button>
       <button data-tab="media">Mídia</button>
       <button data-tab="settings">Ajustes</button>
@@ -49,19 +48,18 @@
         <button id="downScreen">↓</button>
         <button id="pinScreen">Mostrar agora</button>
       </div>
+      <h4>Telas prontas</h4>
+      <div id="addLayout" class="grid2"></div>
       <h4>Adicionar widget</h4>
       <div id="addWidget" class="grid2"></div>
       <h4>Camadas</h4>
       <ul id="layerList" class="list small"></ul>
     </section>
 
-    <section id="tab-themes" class="tab">
-      <p class="muted">Temas de fã feitos só com formas e cores originais. Cada um traz um painel completo
-        e uma tela de relógio com espaço para o seu GIF.</p>
-      <div id="themeList"></div>
-    </section>
-
     <section id="tab-skins" class="tab">
+      <p class="muted">A skin muda cores, fontes e o fundo decorado de todas as telas, sem mexer no layout.</p>
+      <div id="skinGallery"></div>
+      <h4>Editar cores e fontes</h4>
       <select id="skinSelect" class="full"></select>
       <div id="skinColors"></div>
       <div class="row">
@@ -86,6 +84,8 @@
 
     <section id="tab-settings" class="tab">
       <label><input id="autostart" type="checkbox"> Iniciar com o Windows</label>
+      <label><input id="adminMode" type="checkbox"> Modo administrador: FPS nativo do Windows (PresentMon)</label>
+      <p id="fpsStatus" class="muted"></p>
       <label>Transição entre telas
         <select id="transition"><option value="fade">Suave (apaga e acende)</option>
           <option value="none">Instantânea</option></select></label>

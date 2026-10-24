@@ -27,6 +27,8 @@ HOST, PORT = "127.0.0.1", 8777
 MEDIA_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".mp4", ".mkv", ".webm", ".mov", ".avi"}
 
 engine = None  # criado em main()
+STATE = {"admin": autostart.is_admin(), "admin_task": False}
+RESTART_ELEVATED = None  # definido em main()
 
 
 def media_list():
@@ -67,7 +69,7 @@ class Handler(BaseHTTPRequestHandler):
         values = engine.sensors.snapshot()
         values.update(engine.weather.values)
         return {"status": engine.status, "current": engine.current, "pinned": engine.pinned, "values": values,
-                "video_errors": engine.video_errors}
+                "video_errors": engine.video_errors, "fps_status": engine.sensors.fps.status(), **STATE}
 
     def _device_info(self):
         def query(lcd):
@@ -82,6 +84,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         url = urllib.parse.urlparse(self.path)
+        qs = urllib.parse.parse_qs(url.query)
         path = url.path
         if path == "/":
             path = "/index.html"
@@ -95,16 +98,23 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(self._device_info())
             except Exception as e:
                 return self._send({"error": str(e)}, code=503)
-        if path == "/api/themes":
+        if path == "/api/skins":
             return self._send(themes.catalog())
-        m = re.fullmatch(r"/api/theme/(\w+)\.png", path)
-        if m and themes.get(m.group(1)):
-            _, skin, screens = themes.build(m.group(1))
+        if path == "/api/layouts":
+            return self._send([{"id": k, "name": v[0], "description": v[1]} for k, v in themes.LAYOUTS.items()])
+        if path == "/api/skin_preview.png":  # uma tela do usuário desenhada com a skin pedida
+            name = qs.get("name", [""])[0]
+            skin = engine.cfg["skins"].get(name) or (themes.pack(name) or {}).get("skin")
+            screens = [sc for sc in engine.cfg["screens"] if sc.get("kind") != "device_video"] or [themes.dashboard()]
+            screen = screens[min(int(qs.get("screen", ["0"])[0] or 0), len(screens) - 1)]
+            if not skin:
+                return self._send({"error": "skin não encontrada"}, code=404)
             with engine.preview_lock:
-                ctx = engine.context(screens[0], engine.preview_media)
+                ctx = engine.context(screen, engine.preview_media)
                 ctx.skin = skin
-                img = renderer.render(screens[0], (800, 480), ctx)
-            return self._png(img.resize((400, 240)))
+                img = renderer.render(screen, engine.logical_size(), ctx)
+            img.thumbnail((400, 400))
+            return self._png(img)
         m = re.fullmatch(r"/api/preview/(\d+)\.png", path)
         if m:
             return self._png(engine.render_preview(int(m.group(1))))
@@ -131,7 +141,7 @@ class Handler(BaseHTTPRequestHandler):
                 cfg = json.loads(self._body())
                 engine.update_config(cfg)
                 want = bool(cfg.get("settings", {}).get("autostart"))
-                if want != autostart.is_enabled():
+                if not STATE["admin_task"] and want != autostart.is_enabled():
                     autostart.set_enabled(want)
                 return self._send({"ok": True})
             if url.path == "/api/upload":
@@ -153,19 +163,38 @@ class Handler(BaseHTTPRequestHandler):
                 engine.device_call(lambda lcd: lcd.delete_video(name), timeout=30)
                 engine._video = None  # se era o vídeo tocando, a tela de vídeo envia de novo na próxima vez
                 return self._send(self._device_info())
-            if url.path == "/api/theme/apply":
-                tid, mode = qs.get("id", [""])[0], qs.get("mode", ["add"])[0]
-                if not themes.get(tid):
-                    return self._send({"error": "tema não encontrado"}, code=404)
-                skin_name, skin, screens = themes.build(tid)
+            if url.path == "/api/admin_mode":
+                on = qs.get("on", ["1"])[0] == "1"
+                code = autostart.run_elevated("--install-admin-task" if on else "--remove-admin-task")
+                if code is None:
+                    return self._send({"error": "permissão de administrador não concedida"}, code=403)
+                if code != 0:
+                    return self._send({"error": f"o Windows recusou (código {code})"}, code=500)
+                STATE["admin_task"] = on
+                if on:
+                    threading.Timer(0.5, RESTART_ELEVATED).start()
+                    return self._send({"ok": True, "restarting": True})
+                if engine.cfg["settings"].get("autostart"):
+                    autostart.set_enabled(True)
+                return self._send({"ok": True})
+            if url.path == "/api/skin/use":
+                name = qs.get("name", [""])[0]
                 cfg = json.loads(json.dumps(engine.cfg))
-                cfg["skins"][skin_name] = skin
-                first = 0 if mode == "replace" else len(cfg["screens"])
-                cfg["screens"] = screens if mode == "replace" else cfg["screens"] + screens
+                if name not in cfg["skins"] and themes.pack(name):
+                    cfg["skins"][name] = themes.pack(name)["skin"]
+                if name not in cfg["skins"]:
+                    return self._send({"error": "skin não encontrada"}, code=404)
+                cfg["settings"]["skin"] = name
                 engine.update_config(cfg)
-                engine.pinned = None
-                engine.goto(first)
-                return self._send({"ok": True, "config": engine.cfg, "first": first})
+                return self._send({"ok": True, "config": engine.cfg})
+            if url.path == "/api/layout/add":
+                lay = themes.LAYOUTS.get(qs.get("id", [""])[0])
+                if not lay:
+                    return self._send({"error": "tela pronta não encontrada"}, code=404)
+                cfg = json.loads(json.dumps(engine.cfg))
+                cfg["screens"].append(lay[2]())
+                engine.update_config(cfg)
+                return self._send({"ok": True, "config": engine.cfg, "index": len(cfg["screens"]) - 1})
             if url.path == "/api/control":
                 cmd = json.loads(self._body())
                 act = cmd.get("action")
@@ -196,8 +225,12 @@ def already_running(url):
 
 
 def main():
-    global engine
+    global engine, RESTART_ELEVATED
     args = set(sys.argv[1:])
+    if "--install-admin-task" in args:  # chamado elevado pelo próprio app
+        sys.exit(autostart.install_task())
+    if "--remove-admin-task" in args:
+        sys.exit(autostart.remove_task())
     ensure_data_dir()
     if getattr(sys, "frozen", False):  # sem console: mensagens vão para o log
         sys.stdout = sys.stderr = open(LOG_PATH, "a", encoding="utf8", buffering=1)
@@ -207,7 +240,8 @@ def main():
             webbrowser.open(url)
         return
     engine = Engine()
-    engine.cfg["settings"]["autostart"] = autostart.is_enabled()
+    STATE["admin_task"] = autostart.task_installed()
+    engine.cfg["settings"]["autostart"] = STATE["admin_task"] or autostart.is_enabled()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     engine.start()
@@ -217,7 +251,19 @@ def main():
 
     def quit_app():
         engine.stop()
+        engine.sensors.fps.presentmon.stop()
         server.shutdown()
+        server.server_close()
+
+    def restart_elevated():
+        """Fecha esta instância (porta serial e servidor) e abre a versão elevada pela tarefa agendada."""
+        quit_app()
+        engine.thread.join(10)
+        autostart.run_task()
+        import tray
+        tray.stop()
+
+    RESTART_ELEVATED = restart_elevated
 
     try:
         if "--no-tray" in args:

@@ -112,3 +112,4 @@ aside { background: var(--panel); padding: 12px; overflow: auto; }
 .theme img { width: 100%; border-radius: 4px; display: block; aspect-ratio: 5 / 3; background: #000; }
 .theme b { display: block; margin-top: 4px; }
 .theme .tag { font-size: 11px; color: var(--muted); }
+.theme.active { border-color: var(--accent); }
