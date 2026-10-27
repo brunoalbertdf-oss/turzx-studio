@@ -114,6 +114,7 @@ class Engine:
         self.video_errors = {}      # índice da tela -> mensagem
         self._video_failed = None
         self._shown = None          # última tela exibida (para detectar a troca e fazer o fade)
+        self._blanked = False       # tela apagada (PC desligando/suspenso)
         self.thread = threading.Thread(target=self._run, daemon=True)
 
     # ------------------------------------------------------------- configuração
@@ -182,6 +183,32 @@ class Engine:
         return self.cfg["screens"][self.current] if n else None
 
     # ------------------------------------------------------------- comandos para a tela
+
+    # ------------------------------------------------------------- apagar/reacender
+
+    def blank(self, timeout=4.0):
+        """Apaga a tela (brilho zero e imagem preta). Usado ao desligar, suspender ou sair do app:
+        muitas placas-mãe mantêm a USB alimentada e a tela ficaria mostrando o último quadro."""
+        self._blanked = True
+
+        def off(lcd):
+            if self._video:
+                lcd.stop_media()
+                self._video = None
+            lcd.set_brightness(0)
+            lcd.show_full(Image.new("RGB", (WIDTH, HEIGHT), "black"))
+
+        try:
+            self.device_call(off, timeout)
+        except Exception as e:
+            print(time.ctime(), "apagar a tela:", e)
+
+    def wake(self):
+        """Volta da suspensão: reacende e redesenha tudo."""
+        self._blanked = False
+        self._brightness_sent = None
+        self._force_full = True
+        self._shown = None
 
     def device_call(self, fn, timeout=180):
         """Executa fn(tela) na thread que controla a porta serial e devolve o resultado."""
@@ -335,6 +362,10 @@ class Engine:
         while not self._stop.is_set():
             t0 = time.time()
             st = self.cfg["settings"]
+            if self._blanked:  # PC desligando/suspenso: a tela fica apagada, sem novos quadros
+                self._run_ops(lcd)
+                time.sleep(0.2)
+                continue
             if self._brightness_sent != st.get("brightness"):
                 lcd.set_brightness(int(st.get("brightness", 60)))
                 self._brightness_sent = st.get("brightness")

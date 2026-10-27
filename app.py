@@ -186,6 +186,12 @@ class Handler(BaseHTTPRequestHandler):
                 import turzx_screen
                 turzx_screen.TRACE["on"] = qs.get("on", ["1"])[0] == "1"
                 return self._send({"ok": True, "on": turzx_screen.TRACE["on"], "path": turzx_screen.TRACE_PATH})
+            if url.path == "/api/debug/blank":  # testa o apagar/reacender usado no desligamento e na suspensão
+                if qs.get("on", ["1"])[0] == "1":
+                    engine.blank()
+                else:
+                    engine.wake()
+                return self._send({"ok": True})
             if url.path == "/api/quit":  # usado para atualizar o programa (o servidor só aceita conexões locais)
                 threading.Timer(0.5, QUIT_APP).start()
                 return self._send({"ok": True})
@@ -331,12 +337,15 @@ def main():
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     engine.start()
+    import power
+    power.watch(on_off=engine.blank, on_resume=engine.wake)  # desligar/suspender apaga a tela
     threading.Thread(target=warn_missing_afterburner, daemon=True).start()
     print(f"{time.ctime()} TURZX Studio rodando em {url}")
     if not args & {"--background", "--no-browser"}:
         threading.Timer(1.0, webbrowser.open, [url]).start()
 
     def quit_app():
+        engine.blank()  # não deixa a tela congelada no último quadro
         engine.stop()
         engine.sensors.fps.presentmon.stop()
         server.shutdown()

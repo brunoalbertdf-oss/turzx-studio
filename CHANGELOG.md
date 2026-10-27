@@ -1,5 +1,10 @@
 # Registro de mudanças
 
+## 1.1.2 (27/10/2026)
+- **A tela apaga ao desligar, reiniciar, fazer logoff ou suspender o PC**, e também ao sair do app.
+  Muitas placas-mãe mantêm a USB alimentada com o PC desligado, e a tela ficava acesa com o último quadro.
+  Ao voltar da suspensão, ela reacende e redesenha sozinha.
+
 ## 1.1.1 (24/10/2026)
 - Acorda telas que aparecem "dormindo" no Windows (identificação `USB7INCH` / `1A86:CA21`), como o app original faz.
 - Diagnóstico de conexão: quando a tela não é encontrada, o editor mostra as portas vistas com a identificação
