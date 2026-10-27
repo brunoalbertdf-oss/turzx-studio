@@ -349,6 +349,9 @@ class Engine:
                 if msg != getattr(self, "_last_error", None):  # registra cada erro uma vez
                     print(time.ctime(), "tela:", msg)
                     self._last_error = msg
+                if "em uso" in msg:  # a tela de inicialização está liberando a porta
+                    time.sleep(1)
+                    continue
                 try:
                     lcd.close()
                 except Exception:

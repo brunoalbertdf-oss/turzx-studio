@@ -23,7 +23,7 @@ from version import VERSION
 import renderer
 import themes
 from engine import Engine, save_config
-from paths import DEVICE_CACHE, LOGO_DIR, LOG_PATH, MEDIA_DIR, WEB_DIR, ensure_data_dir
+from paths import DATA_DIR, DEVICE_CACHE, LOGO_DIR, LOG_PATH, MEDIA_DIR, WEB_DIR, ensure_data_dir
 from sensors import CATALOG
 
 HOST, PORT = "127.0.0.1", 8777
@@ -31,7 +31,8 @@ VENDORS = ("AMD", "NVIDIA", "Intel")
 MEDIA_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".mp4", ".mkv", ".webm", ".mov", ".avi"}
 
 engine = None  # criado em main()
-STATE = {"admin": autostart.is_admin(), "admin_task": False, "admin_pending": False, "admin_error": ""}
+STATE = {"admin": autostart.is_admin(), "admin_task": False, "admin_pending": False, "admin_error": "",
+         "boot_task": False}
 RESTART_ELEVATED = QUIT_APP = None  # definidos em main()
 
 
@@ -222,6 +223,18 @@ class Handler(BaseHTTPRequestHandler):
                     img.convert("RGBA").save(target)
                 engine._force_full = True  # redesenha com o logo novo
                 return self._send({"ok": True})
+            if url.path == "/api/boot_screen":
+                on = qs.get("on", ["1"])[0] == "1"
+                if STATE["admin"]:  # já elevado: sem pedir permissão de novo
+                    code = autostart.install_boot_task(DATA_DIR) if on else autostart.remove_boot_task()
+                else:
+                    code = autostart.run_elevated("--install-boot-task" if on else "--remove-boot-task")
+                if code is None:
+                    return self._send({"error": "permissão de administrador não concedida"}, code=403)
+                if code != 0:
+                    return self._send({"error": f"o Windows recusou (código {code})"}, code=500)
+                STATE["boot_task"] = on
+                return self._send({"ok": True})
             if url.path == "/api/skin/use":
                 name = qs.get("name", [""])[0]
                 cfg = json.loads(json.dumps(engine.cfg))
@@ -316,6 +329,14 @@ def main():
         sys.exit(autostart.install_task())
     if "--remove-admin-task" in args:
         sys.exit(autostart.remove_task())
+    if "--install-boot-task" in args:
+        sys.exit(autostart.install_boot_task(DATA_DIR))
+    if "--remove-boot-task" in args:
+        sys.exit(autostart.remove_boot_task())
+    if "--boot-screen" in args:  # antes do login (tarefa como SYSTEM): só a tela de inicialização
+        import bootscreen
+        bootscreen.run()
+        return
     ensure_data_dir()
     if getattr(sys, "frozen", False):  # sem console: mensagens vão para o log
         sys.stdout = sys.stderr = open(LOG_PATH, "a", encoding="utf8", buffering=1)
@@ -334,11 +355,12 @@ def main():
             return
     if STATE["admin_task"] and STATE["admin"] and autostart.task_outdated():
         autostart.install_task()  # versão anterior tinha atraso de 10 s no login
+    STATE["boot_task"] = autostart.boot_task_installed()
     engine = Engine()
-    engine.start()  # conecta à tela o quanto antes; o resto da abertura segue em paralelo
     engine.cfg["settings"]["autostart"] = STATE["admin_task"] or autostart.is_enabled()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
+    threading.Thread(target=server.serve_forever, daemon=True).start()  # avisa a tela de inicialização
+    engine.start()  # conecta à tela o quanto antes; o resto da abertura segue em paralelo
     import power
     power.watch(on_off=engine.blank, on_resume=engine.wake)  # desligar/suspender apaga a tela
     threading.Thread(target=warn_missing_afterburner, daemon=True).start()

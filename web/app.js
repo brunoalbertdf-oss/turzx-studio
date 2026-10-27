@@ -576,6 +576,14 @@ $("#pinScreen").addEventListener("click", async () => {
 });
 $("#prevScreen").addEventListener("click", () => api("/api/control", { action: "prev" }).then(pollStatus));
 $("#nextScreen").addEventListener("click", () => api("/api/control", { action: "next" }).then(pollStatus));
+$("#bootScreen").addEventListener("change", async (e) => {
+  const on = e.target.checked;
+  if (on && !confirm("Criar uma tarefa do Windows que acende a tela durante a inicialização, antes do login? " +
+      "Ela roda como sistema e fecha sozinha quando o TURZX Studio abre. Se o app não estiver como administrador, " +
+      "o Windows vai pedir permissão.")) { e.target.checked = false; return; }
+  const r = await fetch(`/api/boot_screen?on=${on ? 1 : 0}`, { method: "POST" }).then((x) => x.json()).catch(() => ({}));
+  if (r.error) { alert(r.error); e.target.checked = !on; }
+});
 $("#liveView").addEventListener("change", (e) => { $("#overlay").classList.toggle("live", e.target.checked); refreshPreview(); });
 $("#showGrid").addEventListener("change", (e) => $("#overlay").classList.toggle("grid", e.target.checked));
 
@@ -701,6 +709,7 @@ async function pollStatus() {
     const pinned = r.pinned != null;
     $("#pinScreen").dataset.pinned = pinned ? "1" : "0";
     renderSources(r.values, r);
+    $("#bootScreen").checked = !!r.boot_task;
     $("#pinScreen").textContent = pinned ? `Retomar carrossel (fixa: ${cfg.screens[r.pinned]?.name || r.pinned})` : "Mostrar agora";
   } catch {
     $("#conn").className = "pill bad"; $("#conn").textContent = "App fechado";

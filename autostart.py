@@ -105,6 +105,52 @@ def _log(msg):
         pass
 
 
+BOOT_TASK = "TURZX Studio - inicializacao"
+
+
+def boot_task_installed():
+    r = subprocess.run(["schtasks", "/Query", "/TN", BOOT_TASK], capture_output=True, creationflags=NO_WINDOW)
+    return r.returncode == 0
+
+
+def _boot_task_xml(data_dir):
+    exe, base = _program()
+    esc = lambda s: s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    args = f'{base} --boot-screen --data "{data_dir}"'.strip()
+    return f"""<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo><Description>Acende a tela TURZX durante a inicialização do Windows, antes do login. Fecha sozinha quando o TURZX Studio abre.</Description></RegistrationInfo>
+  <Triggers><BootTrigger><Enabled>true</Enabled></BootTrigger></Triggers>
+  <Principals><Principal id="Author"><UserId>S-1-5-18</UserId><RunLevel>HighestAvailable</RunLevel></Principal></Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Priority>4</Priority>
+  </Settings>
+  <Actions Context="Author"><Exec><Command>{esc(exe)}</Command><Arguments>{esc(args)}</Arguments>
+    <WorkingDirectory>{esc(os.path.dirname(exe))}</WorkingDirectory></Exec></Actions>
+</Task>"""
+
+
+def install_boot_task(data_dir):
+    """Executar já elevado: tarefa como SYSTEM ao iniciar o sistema."""
+    path = os.path.join(tempfile.gettempdir(), "turzx-studio-boot-task.xml")
+    with open(path, "w", encoding="utf-16") as f:
+        f.write(_boot_task_xml(data_dir))
+    r = subprocess.run(["schtasks", "/Create", "/F", "/TN", BOOT_TASK, "/XML", path], capture_output=True,
+                       creationflags=NO_WINDOW)
+    os.remove(path)
+    _log(f"criar tarefa de inicialização: código {r.returncode}")
+    return r.returncode
+
+
+def remove_boot_task():
+    return subprocess.run(["schtasks", "/Delete", "/F", "/TN", BOOT_TASK], capture_output=True,
+                          creationflags=NO_WINDOW).returncode
+
+
 def install_task():
     """Executar já elevado: cria a tarefa e desliga a entrada normal do registro."""
     path = os.path.join(tempfile.gettempdir(), "turzx-studio-task.xml")

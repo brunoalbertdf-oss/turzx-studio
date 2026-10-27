@@ -9,6 +9,9 @@
   da abertura, consulta de hardware em segundo plano e busca da pasta do TURZX guardada.
 - A tela só acende depois do primeiro desenho, sem mostrar a imagem antiga ou preta.
 - Vídeos já convertidos continuam funcionando sem o ffmpeg (ele só é exigido para vídeos novos).
+- **Tela acesa antes do login** (opcional, em Ajustes): uma tarefa do Windows que roda na inicialização do
+  sistema mostra relógio, data e uso de CPU/RAM com a sua skin enquanto o Windows inicia. Quando o TURZX
+  Studio abre, ela entrega a tela sem apagar.
 
 ## 1.1.1 (24/10/2026)
 - Acorda telas que aparecem "dormindo" no Windows (identificação `USB7INCH` / `1A86:CA21`), como o app original faz.

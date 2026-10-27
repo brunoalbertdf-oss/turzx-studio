@@ -14,6 +14,8 @@ ASSETS_DIR = os.path.join(RES_DIR, "assets")
 
 # Dados do usuário: configuração, mídias, logos e vídeos convertidos.
 DATA_DIR = os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), APP_NAME)
+if "--data" in sys.argv[:-1]:  # a tela de inicialização roda como SYSTEM e recebe a pasta do usuário
+    DATA_DIR = sys.argv[sys.argv.index("--data") + 1]
 CONFIG_PATH = os.path.join(DATA_DIR, "config.json")
 MEDIA_DIR = os.path.join(DATA_DIR, "media")
 DEVICE_CACHE = os.path.join(MEDIA_DIR, ".tela")
