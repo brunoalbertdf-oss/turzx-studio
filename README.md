@@ -27,6 +27,9 @@ previsão do tempo, GIFs e vídeos fluidos.
   - ou em **tela cheia a 24 fps**: o vídeo é gravado na memória da própria tela e tocado por ela.
 - **Retrato ou paisagem**, inclusive de cabeça para baixo, para telas montadas invertidas no gabinete.
 - **Ícone na bandeja** e opção **Iniciar com o Windows**.
+- **Acompanha o PC**: a tela apaga ao desligar, reiniciar ou suspender, porque muitas placas-mãe mantêm a
+  USB ligada com o PC desligado. Opcionalmente, ela **acende antes do login**, enquanto o Windows inicia,
+  com relógio e uso de CPU/RAM. Para ativar: Ajustes → "Acender a tela antes do login".
 
 ## Instalação
 
