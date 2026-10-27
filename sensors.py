@@ -134,7 +134,9 @@ class Sensors:
     def __init__(self, lhm_url="http://127.0.0.1:8085/data.json"):
         self.lhm_url = lhm_url
         self.values = {k: 0 for k in CATALOG}
-        self.values.update(_hardware(), hostname=platform.node(), cpu_temp="—", cpu_power="—")
+        self.values.update(hostname=platform.node(), cpu_temp="—", cpu_power="—", cpu_name="", gpu_name="",
+                           cpu_vendor="", gpu_vendor="", cpu_name_full="", gpu_name_full="", cpu_cores="")
+        threading.Thread(target=lambda: self.values.update(_hardware()), daemon=True).start()
         self.drives = read_drives()
         self._drives_t = time.time()
         self.values.update(drive_values(self.drives))

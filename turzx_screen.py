@@ -145,7 +145,8 @@ class TurzxScreen:
 
     def stop_media(self):
         self._send(STOP_VIDEO)
-        self._send(STOP_MEDIA, read=1024)
+        self._send(STOP_MEDIA)
+        self._read_reply(wait=1.0, quiet=0.1)  # "media_stop" chega em poucos ms
 
     def turn_off(self):
         self._send(TURN_OFF)

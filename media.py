@@ -194,6 +194,9 @@ def convert_for_device(src_path, orientation, ffmpeg, cache_dir):
     name = device_video_name(src_path, orientation)
     out = os.path.join(cache_dir, name)
     if not os.path.isfile(out):
+        if not ffmpeg:
+            raise RuntimeError("para converter vídeos novos é preciso o ffmpeg: instale-o (ffmpeg.org) ou "
+                               "informe o caminho em Ajustes")
         (w, h), rot = DEVICE_ROTATION.get(orientation, DEVICE_ROTATION["landscape"])
         vf = f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},{rot}setsar=1:1"
         tmp = out + ".tmp.mp4"

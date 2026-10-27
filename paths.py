@@ -32,11 +32,34 @@ def ensure_data_dir():
                 shutil.copy2(os.path.join(sample, f), dst)
 
 
-@lru_cache(maxsize=1)
 def find_turzx_dir(configured=""):
     """Procura a instalação do app TURZX original (ele traz o ffmpeg e as fontes dos temas)."""
+    return _find_turzx_dir(configured or "")
+
+
+@lru_cache(maxsize=4)
+def _find_turzx_dir(configured):
     if configured and os.path.isfile(os.path.join(configured, "UsbMonitorL.exe")):
         return configured
+    memo = os.path.join(DATA_DIR, "turzx_dir.txt")  # a busca no disco leva ~1,5 s: guarda o resultado
+    try:
+        with open(memo, encoding="utf8") as f:
+            found = f.read().strip()
+        if not found or os.path.isfile(os.path.join(found, "UsbMonitorL.exe")):
+            return found
+    except OSError:
+        pass
+    found = _search_turzx_dir()
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(memo, "w", encoding="utf8") as f:
+            f.write(found)
+    except OSError:
+        pass
+    return found
+
+
+def _search_turzx_dir():
     home = os.path.expanduser("~")
     roots = [os.path.join(home, d) for d in ("Documents", "Desktop", "Downloads")]
     roots += [os.environ.get("ProgramFiles", ""), os.environ.get("ProgramFiles(x86)", ""), "C:\\"]

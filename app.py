@@ -73,7 +73,7 @@ class Handler(BaseHTTPRequestHandler):
         values = engine.sensors.snapshot()
         values.update(engine.weather.values)
         return {"status": engine.status, "current": engine.current, "pinned": engine.pinned, "values": values,
-                "video_errors": engine.video_errors, **STATE}
+                "video_errors": engine.video_errors, "timing": engine.timing, **STATE}
 
     def _device_info(self):
         def query(lcd):
@@ -332,11 +332,13 @@ def main():
                 threading.Timer(6.0, webbrowser.open, [url]).start()
                 time.sleep(7)
             return
+    if STATE["admin_task"] and STATE["admin"] and autostart.task_outdated():
+        autostart.install_task()  # versão anterior tinha atraso de 10 s no login
     engine = Engine()
+    engine.start()  # conecta à tela o quanto antes; o resto da abertura segue em paralelo
     engine.cfg["settings"]["autostart"] = STATE["admin_task"] or autostart.is_enabled()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    engine.start()
     import power
     power.watch(on_off=engine.blank, on_resume=engine.wake)  # desligar/suspender apaga a tela
     threading.Thread(target=warn_missing_afterburner, daemon=True).start()

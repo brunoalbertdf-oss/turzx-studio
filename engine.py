@@ -115,6 +115,7 @@ class Engine:
         self._video_failed = None
         self._shown = None          # última tela exibida (para detectar a troca e fazer o fade)
         self._blanked = False       # tela apagada (PC desligando/suspenso)
+        self.timing = {"start": time.time()}  # tempos de abertura (diagnóstico)
         self.thread = threading.Thread(target=self._run, daemon=True)
 
     # ------------------------------------------------------------- configuração
@@ -242,10 +243,7 @@ class Engine:
         try:
             if not os.path.isfile(src):
                 raise RuntimeError("arquivo de mídia não encontrado")
-            ff = self.media.ffmpeg
-            if not ff:
-                raise RuntimeError("ffmpeg não encontrado")
-            self.status["message"] = "Convertendo vídeo…"
+            ff = self.media.ffmpeg  # só é preciso para converter um vídeo novo
             name, path = convert_for_device(src, self.cfg["settings"].get("orientation"), ff, DEVICE_CACHE)
             size = os.path.getsize(path)
             if name in lcd.list_videos() and lcd.file_size(name) != size:
@@ -325,6 +323,7 @@ class Engine:
                 self.status.update(message="Procurando a tela…")
                 lcd = TurzxScreen(self.cfg["settings"].get("port") or None)
                 self.status.update(screen_id=lcd.hello(), connected=True, message="Conectada")
+                self.timing.setdefault("connected", round(time.time() - self.timing["start"], 2))
                 lcd.stop_media()
                 self._video = None
                 self._shown = None
@@ -366,7 +365,8 @@ class Engine:
                 self._run_ops(lcd)
                 time.sleep(0.2)
                 continue
-            if self._brightness_sent != st.get("brightness"):
+            drawn = native_old is not None or self._video  # acende só depois de haver algo na tela
+            if self._brightness_sent != st.get("brightness") and drawn:
                 lcd.set_brightness(int(st.get("brightness", 60)))
                 self._brightness_sent = st.get("brightness")
             self._run_ops(lcd)
@@ -405,6 +405,8 @@ class Engine:
                 for x, y, w, h in dirty_rects(native_old, native):
                     lcd.show_region(native.crop((x, y, x + w, y + h)), x, y)
             native_old = native
+            if "first_frame" not in self.timing:
+                self.timing["first_frame"] = round(time.time() - self.timing["start"], 2)
             if fade:
                 self._fade(lcd, out=False)
             self._shown = self.current

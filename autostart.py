@@ -61,6 +61,14 @@ def is_admin():
         return False
 
 
+TASK_FORMAT = "formato-2"  # muda quando a definição da tarefa muda (para atualizar tarefas antigas)
+
+
+def task_outdated():
+    r = subprocess.run(["schtasks", "/Query", "/TN", TASK, "/XML"], capture_output=True, creationflags=NO_WINDOW)
+    return r.returncode == 0 and TASK_FORMAT.encode("utf-16-le") not in r.stdout and TASK_FORMAT.encode() not in r.stdout
+
+
 def task_installed():
     r = subprocess.run(["schtasks", "/Query", "/TN", TASK], capture_output=True, creationflags=NO_WINDOW)
     return r.returncode == 0
@@ -72,8 +80,8 @@ def _task_xml():
     esc = lambda s: s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
     return f"""<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
-  <RegistrationInfo><Description>Abre o TURZX Studio ao fazer login (como administrador, para medir FPS).</Description></RegistrationInfo>
-  <Triggers><LogonTrigger><Enabled>true</Enabled><UserId>{esc(user)}</UserId><Delay>PT10S</Delay></LogonTrigger></Triggers>
+  <RegistrationInfo><Description>Abre o TURZX Studio ao fazer login (como administrador, para medir FPS). {TASK_FORMAT}</Description></RegistrationInfo>
+  <Triggers><LogonTrigger><Enabled>true</Enabled><UserId>{esc(user)}</UserId></LogonTrigger></Triggers>
   <Principals><Principal id="Author"><UserId>{esc(user)}</UserId><LogonType>InteractiveToken</LogonType>
     <RunLevel>HighestAvailable</RunLevel></Principal></Principals>
   <Settings>

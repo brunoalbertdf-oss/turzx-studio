@@ -4,6 +4,11 @@
 - **A tela apaga ao desligar, reiniciar, fazer logoff ou suspender o PC**, e também ao sair do app.
   Muitas placas-mãe mantêm a USB alimentada com o PC desligado, e a tela ficava acesa com o último quadro.
   Ao voltar da suspensão, ela reacende e redesenha sozinha.
+- **Inicialização bem mais rápida**: a tela acende uns 5 s depois da área de trabalho (antes, ~20 s).
+  Sem o atraso de 10 s no login (a tarefa existente é atualizada sozinha), conexão com a tela antes do resto
+  da abertura, consulta de hardware em segundo plano e busca da pasta do TURZX guardada.
+- A tela só acende depois do primeiro desenho, sem mostrar a imagem antiga ou preta.
+- Vídeos já convertidos continuam funcionando sem o ffmpeg (ele só é exigido para vídeos novos).
 
 ## 1.1.1 (24/10/2026)
 - Acorda telas que aparecem "dormindo" no Windows (identificação `USB7INCH` / `1A86:CA21`), como o app original faz.
